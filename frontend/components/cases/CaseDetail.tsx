@@ -1,3 +1,4 @@
+import { AgentWorkbench } from "@/components/cases/AgentWorkbench";
 import { AuditTimeline } from "@/components/cases/AuditTimeline";
 import { BacklogTable } from "@/components/cases/BacklogTable";
 import { LifecycleTimeline } from "@/components/cases/LifecycleTimeline";
@@ -64,7 +65,7 @@ export function CaseDetailView({
           </p>
           <p className="mt-2 text-lg font-medium uppercase">{row.status}</p>
           <p className="mt-1 text-xs text-ink-soft">
-            Observation only. No action is executed here.
+            Simulated recovery is available below. No real payment is attempted.
           </p>
         </div>
       </section>
@@ -92,6 +93,7 @@ export function CaseDetailView({
       </section>
 
       <ModelPanel analysis={detail.model_analysis ?? row.model_analysis} />
+      <AgentWorkbench detail={detail} />
       <WhyThisCase caseRow={row} policy={detail.policy} />
       <PolicyPanel policy={detail.policy} />
 

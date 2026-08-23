@@ -1,9 +1,14 @@
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.agent.service import evaluate_case_policy
 from app.config import get_settings
-from app.domain.enums import RecoveryCaseStatus
+from app.domain.enums import Actor, AuditEventType, RecoveryCaseStatus
 from app.domain.policy import PolicyContext, PolicyDecision
 from app.domain.time import utcnow
+from app.llm.explanation import CaseExplanationService
+from app.llm.facts import explanation_facts, qa_facts
+from app.llm.grounding import extraction_is_supported
+from app.llm.provider import get_language_provider
 from app.ml.case_view import build_case_view
 from app.ml.predict import try_analyze_view
 from app.models.documents import Customer, RecoveryCase, Subscription
@@ -16,12 +21,14 @@ from app.routes.deps import (
     Reconcile,
     Subscriptions,
 )
+from app.schemas.agent import AskRequest, ExtractRequest
 from app.schemas.recovery import (
     ReconcileReportOut,
     RecoveryCaseDetail,
     RecoveryCaseOut,
 )
 from app.schemas.subscriptions import AuditLogOut, HaltEpisodeOut, InvoiceOut
+from app.services.audit import AuditTrail
 
 
 def _policy_status(decision: PolicyDecision) -> str:
@@ -193,6 +200,130 @@ async def get_recovery_case_analysis(
             "No valid active recovery model exists. Train one with POST /api/model/train.",
         )
     return analysis
+
+
+@router.get("/recovery-cases/{case_id}/explanation")
+async def get_recovery_case_explanation(
+    case_id: str,
+    cases: Cases,
+    subscriptions: Subscriptions,
+    customers: Customers,
+    mode: str = Query(default="deterministic"),
+):
+    case = await cases.get(case_id)
+    if case is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
+    subscription = await subscriptions.get(case.subscription_id)
+    customer = await customers.get(case.customer_id)
+    if subscription is None or customer is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "case entities are missing")
+    policy = evaluate_case_policy(case, customer, subscription)
+    analysis = try_analyze_view(build_case_view(case, customer, subscription))
+    facts = explanation_facts(case, policy, analysis)
+    prefer = mode == "llm"
+    explanation, source = CaseExplanationService(get_language_provider()).explain(
+        facts, prefer_llm=prefer
+    )
+    return {
+        "explanation": explanation.model_dump(),
+        "source": source,
+        "requested_mode": mode,
+        "synthetic": True,
+    }
+
+
+@router.post("/recovery-cases/{case_id}/ask")
+async def ask_recovery_case(
+    case_id: str,
+    body: AskRequest,
+    cases: Cases,
+    subscriptions: Subscriptions,
+    customers: Customers,
+    audit: Audit,
+):
+    case = await cases.get(case_id)
+    if case is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
+    subscription = await subscriptions.get(case.subscription_id)
+    customer = await customers.get(case.customer_id)
+    if subscription is None or customer is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "case entities are missing")
+    policy = evaluate_case_policy(case, customer, subscription)
+    analysis = try_analyze_view(build_case_view(case, customer, subscription))
+    entries = _relevant_audit(await audit.list_for_subscription(case.subscription_id), case)
+    facts = qa_facts(case, policy, analysis, entries)
+    answer, source = CaseExplanationService(get_language_provider()).ask(
+        body.question, facts, prefer_llm=body.prefer_llm
+    )
+    return {
+        "answer": answer.answer,
+        "source": source,
+        "grounding": answer.grounding,
+        "insufficient_information": answer.insufficient_information,
+        "synthetic": True,
+    }
+
+
+@router.post("/recovery-cases/{case_id}/extract")
+async def extract_recovery_context(
+    case_id: str,
+    body: ExtractRequest,
+    cases: Cases,
+    customers: Customers,
+    subscriptions: Subscriptions,
+    audit: Audit,
+):
+    case = await cases.get(case_id)
+    if case is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
+    proposal, source = CaseExplanationService(get_language_provider()).extract(
+        body.source_text, prefer_llm=body.prefer_llm
+    )
+    supported = extraction_is_supported(proposal, body.source_text)
+    trail = AuditTrail(subscriptions, audit)
+    await trail.record(
+        run_id=case.run_id,
+        subscription_id=case.subscription_id,
+        event_type=AuditEventType.CONTEXT_EXTRACTION_PROPOSED,
+        details={"case_id": case.case_id, "source": source, "apply": body.apply},
+        actor=Actor.LANGUAGE_LAYER,
+    )
+    applied = False
+    has_facts = (
+        proposal.has_dispute is True
+        or proposal.customer_opted_out is True
+        or bool(proposal.risk_signals)
+    )
+    if body.apply and supported and has_facts:
+        await customers.set_flags(
+            case.customer_id,
+            has_active_dispute=proposal.has_dispute,
+            customer_opted_out=proposal.customer_opted_out,
+            risk_flags=proposal.risk_signals or None,
+        )
+        await trail.record(
+            run_id=case.run_id,
+            subscription_id=case.subscription_id,
+            event_type=AuditEventType.CONTEXT_UPDATE_ACCEPTED,
+            details={"case_id": case.case_id, "proposal": proposal.model_dump()},
+            actor=Actor.SYSTEM,
+        )
+        applied = True
+    elif body.apply and not supported:
+        await trail.record(
+            run_id=case.run_id,
+            subscription_id=case.subscription_id,
+            event_type=AuditEventType.CONTEXT_UPDATE_REJECTED,
+            details={"case_id": case.case_id, "reason": "unsupported_extraction"},
+            actor=Actor.SYSTEM,
+        )
+    return {
+        "proposal": proposal.model_dump(),
+        "source": source,
+        "supported": supported,
+        "applied": applied,
+        "synthetic": True,
+    }
 
 
 @router.get("/recovery-cases/{case_id}/audit", response_model=list[AuditLogOut])

@@ -25,4 +25,5 @@ class SimulationRun(BaseModel):
     completed_at: datetime | None = None
     world_summary: dict = Field(default_factory=dict)
     strategy_results: dict = Field(default_factory=dict)
+    interventions_claimed: int = 0
     error: str | None = None

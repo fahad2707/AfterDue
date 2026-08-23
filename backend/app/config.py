@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     policy_version: str = "v1"
     policy_max_attempts: int = 3
     policy_contact_cooldown_hours: int = 24
+    max_recovery_attempts: int = 3
+    agent_hard_iteration_cap: int = 4
     model_artifact_path: str = "app/ml/artifacts/recovery_model.joblib"
     sim_default_seed: int = 42
     intervention_budget_default: int = 150

@@ -85,3 +85,32 @@ class RecoveryCaseRepository(Repository):
             return_document=ReturnDocument.AFTER,
         )
         return RecoveryCase.model_validate(strip_id(doc)) if doc else None
+
+    async def record_attempt(
+        self, case_id: str, *, now: datetime, contacted: bool
+    ) -> RecoveryCase | None:
+        update: dict = {"$inc": {"attempt_count": 1}, "$set": {"updated_at": now}}
+        if contacted:
+            update["$set"]["last_contact_at"] = now
+        doc = await self.col.find_one_and_update(
+            {"case_id": case_id},
+            update,
+            return_document=ReturnDocument.AFTER,
+        )
+        return RecoveryCase.model_validate(strip_id(doc)) if doc else None
+
+    async def close_recovered(
+        self, case_id: str, *, amount_recovered_paise: int, now: datetime
+    ) -> RecoveryCase | None:
+        doc = await self.col.find_one_and_update(
+            {"case_id": case_id},
+            {
+                "$set": {
+                    "status": RecoveryCaseStatus.CLOSED.value,
+                    "amount_recovered_paise": amount_recovered_paise,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return RecoveryCase.model_validate(strip_id(doc)) if doc else None

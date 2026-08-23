@@ -83,6 +83,24 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("run_id", ASCENDING)], name="uq_run_id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
     ],
+    "agent_runs": [
+        IndexModel([("agent_run_id", ASCENDING)], name="uq_agent_run_id", unique=True),
+        IndexModel([("run_id", ASCENDING), ("case_id", ASCENDING)], name="run_case"),
+    ],
+    "recovery_actions": [
+        IndexModel([("action_id", ASCENDING)], name="uq_action_id", unique=True),
+        IndexModel(
+            [("idempotency_key", ASCENDING)], name="uq_recovery_action_idempotency", unique=True
+        ),
+        IndexModel([("run_id", ASCENDING), ("case_id", ASCENDING)], name="run_case"),
+        IndexModel(
+            [("agent_run_id", ASCENDING), ("attempt_number", ASCENDING)],
+            name="agent_attempt",
+        ),
+    ],
+    "intervention_budgets": [
+        IndexModel([("run_id", ASCENDING)], name="uq_budget_run_id", unique=True),
+    ],
     "model_runs": [
         IndexModel([("model_run_id", ASCENDING)], name="uq_model_run_id", unique=True),
         IndexModel([("trained_at", DESCENDING)], name="trained_at_desc"),

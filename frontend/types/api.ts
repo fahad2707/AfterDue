@@ -171,6 +171,7 @@ export type RecoveryCase = {
   policy_version: string;
   attempt_count: number;
   last_contact_at: string | null;
+  amount_recovered_paise: number;
   created_at: string;
   updated_at: string;
   customer_name: string;

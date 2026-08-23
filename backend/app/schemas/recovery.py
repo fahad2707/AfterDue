@@ -36,6 +36,7 @@ class RecoveryCaseOut(BaseModel):
     policy_version: str
     attempt_count: int
     last_contact_at: datetime | None
+    amount_recovered_paise: int = 0
     created_at: datetime
     updated_at: datetime
     #: Filled at read time so the queue can show a name and policy state.

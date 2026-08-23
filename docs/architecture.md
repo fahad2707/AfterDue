@@ -190,7 +190,7 @@ Reclaim/
 | M3 | Seeded world, counterfactual oracle, naive / rule-based baselines | done |
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | done |
 | M5 | Feature builder, uplift model, calibration, incremental EV | done |
-| M6 | LLM language layer, validator, bounded agent loop | pending |
+| M6 | LLM language layer, validator, bounded agent loop | done |
 | M7 | Adversarial tests, README, deployment, demo | pending |
 
 ---
@@ -599,4 +599,44 @@ recovery” and “estimated intervention lift,” never “AI confidence.”
 No Claude, no generated explanations, no natural-language audit Q&A, no
 XGBoost/LightGBM/neural nets, no production Razorpay data, no real money
 movement. The M3 world is not retuned so RECLAIM wins.
+
+---
+
+## 11. M6 — language intelligence, validator, bounded agent
+
+M6 adds a **side-car language layer** and a **deterministic recovery
+agent**. Claude never sits on the measured path. See [agent.md](agent.md).
+
+```
+observe → analyze → propose → validate → simulate → observe outcome → stop
+```
+
+**Provider abstraction.** `LanguageProvider.generate_structured` is the only
+call shape. Anthropic is an optional adapter. `LLM_ENABLED` defaults to
+false. Missing keys do not fail startup.
+
+**Explanations.** Structured `CaseExplanation` only. Malformed or ungrounded
+output falls back to deterministic copy assembled from backlog, invoices,
+policy codes, and model estimates.
+
+**Extraction.** Unstructured text becomes a proposal with source spans.
+Applying flags is a separate, validated step. The LLM cannot execute.
+
+**Validator.** Re-evaluates policy immediately before the simulated
+executor. A payment-link plan followed by an opt-out is blocked (TOCTOU).
+
+**Execution.** `SimulatedExecutor` uses the M3 oracle. Idempotency is a
+unique `idempotency_key`. Budget slots are claimed with an atomic Mongo
+update. Max attempts default to 3. Cooldown sets `next_eligible_at`; the
+HTTP handler does not sleep.
+
+**Console.** Case detail shows the recommendation, a deterministic
+“Why this action?”, optional AI explanation (not on page load), simulated
+run + trace, and a small Ask RECLAIM chip list.
+
+### 11.1 What M6 deliberately does not do
+
+No production Razorpay charge or payment-link API, no WhatsApp / SMS /
+voice, no LLM-controlled money movement, no LLM-written metrics. M7 is
+adversarial hardening and packaging, not a second executor.
 

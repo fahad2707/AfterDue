@@ -208,6 +208,8 @@ class RecoveryCase(BaseModel):
 
     attempt_count: int = 0
     last_contact_at: datetime | None = None
+    #: Full-backlog recovery only. Partial invoice settlement is not modeled.
+    amount_recovered_paise: Paise = 0
 
     created_at: datetime
     updated_at: datetime

@@ -3,12 +3,16 @@ from typing import Annotated
 from fastapi import Depends
 from pymongo.asynchronous.database import AsyncDatabase
 
+from app.agent.service import RecoveryAgent
 from app.database import mongo
+from app.repositories.agent_runs import AgentRunRepository
 from app.repositories.audit import AuditRepository
+from app.repositories.budgets import BudgetRepository
 from app.repositories.customers import CustomerRepository
 from app.repositories.events import EventRepository
 from app.repositories.invoices import InvoiceRepository
 from app.repositories.model_runs import ModelRunRepository
+from app.repositories.recovery_actions import RecoveryActionRepository
 from app.repositories.recovery_cases import RecoveryCaseRepository
 from app.repositories.simulation_runs import SimulationRunRepository
 from app.repositories.subscriptions import SubscriptionRepository
@@ -130,6 +134,21 @@ def get_model_runs(db: Db) -> ModelRunRepository:
     return ModelRunRepository(db)
 
 
+def get_agent(db: Db) -> RecoveryAgent:
+    subscriptions = SubscriptionRepository(db)
+    return RecoveryAgent(
+        cases=RecoveryCaseRepository(db),
+        customers=CustomerRepository(db),
+        subscriptions=subscriptions,
+        runs=SimulationRunRepository(db),
+        agent_runs=AgentRunRepository(db),
+        actions=RecoveryActionRepository(db),
+        budgets=BudgetRepository(db),
+        trail=AuditTrail(subscriptions, AuditRepository(db)),
+    )
+
+
 SimRuns = Annotated[SimulationRunRepository, Depends(get_runs)]
 SimRunner = Annotated[SimulationRunner, Depends(get_sim_runner)]
 ModelRuns = Annotated[ModelRunRepository, Depends(get_model_runs)]
+Agent = Annotated[RecoveryAgent, Depends(get_agent)]

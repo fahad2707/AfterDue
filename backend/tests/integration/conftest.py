@@ -16,6 +16,9 @@ COLLECTIONS = [
     "recovery_cases",
     "simulation_runs",
     "model_runs",
+    "agent_runs",
+    "recovery_actions",
+    "intervention_budgets",
 ]
 
 

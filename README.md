@@ -7,7 +7,8 @@ Post-halt subscription revenue recovery agent. Razorpay Buildathon — Track 03.
 > **SYNTHETIC SIMULATION — NOT PRODUCTION DATA.**
 > Every number this system produces comes from a seeded synthetic environment.
 > No Razorpay production data is used, and no real money moves.
-> There is no Claude / LLM layer. All economic results are synthetic.
+> The language layer is optional and off by default. Economic results
+> never depend on Claude.
 
 ---
 
@@ -37,7 +38,12 @@ training, per-action probabilities, estimated intervention lift,
 incremental expected value, and a `ReclaimStrategy` that ranks under the
 same policy and intervention budget as the baselines. Done.
 
-**Not built yet:** Claude / language layer (M6) and payment execution.
+**M6 — Bounded agent.** Optional Claude side-car (explanations, Q&A,
+extraction), execution-time validator, simulated executor on the M3
+oracle, idempotent `recovery_actions`, and atomic intervention-budget
+claims. No real payment APIs. Done.
+
+**Not built yet:** M7 packaging, adversarial suite, and deployment polish.
 
 ---
 

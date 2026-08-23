@@ -284,3 +284,28 @@ remain the Mongo isolation keys.
 **Prevention.** Integration test generates two seed-42 worlds, asserts
 isolated persistence IDs, identical features, identical latents, identical
 per-action counterfactuals, and identical strategy metrics.
+
+---
+
+## INC-011 — Opt-out TOCTOU reported POLICY_BLOCKED because the model re-scored
+
+**Milestone:** M6
+**Severity:** would have hidden the validator demo; caught by the required TOCTOU test
+
+**Problem.** Plan recommended a payment link. After the customer was mutated
+to opted-out, execute returned `POLICY_BLOCKED` instead of
+`CUSTOMER_OPTED_OUT`.
+
+**Cause.** Execute rebuilt `CaseView` from the latest customer. Opt-out is a
+model feature, so the ranking could change before the validator ran. The
+generic “action not allowed” branch then fired, or a different action was
+proposed.
+
+**Fix.** Proposal scoring uses a copy of the customer with dispute/opt-out
+cleared. The validator applies the real flags and maps
+`CUSTOMER_OPTED_OUT` / `ACTIVE_DISPUTE` reason codes before the generic
+`POLICY_BLOCKED` stop.
+
+**Prevention.** `test_toctou_opt_out_blocks_execution` plans a payment link,
+mutates opt-out in Mongo, executes, and asserts `CUSTOMER_OPTED_OUT`, no
+oracle row, and no budget claim.
