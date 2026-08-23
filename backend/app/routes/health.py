@@ -44,6 +44,11 @@ async def healthz() -> HealthResponse:
 async def readyz(response: Response) -> ReadyResponse:
     """Readiness. Checks every dependency the app needs to serve real traffic.
 
+    Reports the health of the *current connection pool*, not the current
+    validity of credentials: the driver authenticates when a connection is
+    established, so a pooled connection keeps answering ping after a password
+    rotation. A restart surfaces the real state. See docs/incidents.md INC-004.
+
     Later milestones add the active-model check here.
     """
     mongo_ok, mongo_err = await mongo.ping()

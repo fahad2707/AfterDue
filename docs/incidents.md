@@ -61,6 +61,44 @@ are listed, and `.env` / `.env.local` are explicitly refused as ignored.
 
 ---
 
+## INC-004 — Readiness reported healthy against dead credentials
+
+**Milestone:** M0
+**Severity:** observability gap, no data impact
+
+**Problem.** The Atlas database password was rotated. `/readyz` continued to
+answer `200 {"ready": true, "mongodb": {"ok": true}}` even though the
+credentials in `.env` were no longer valid.
+
+**Cause.** The readiness check issues `admin.command("ping")` through the
+existing `AsyncMongoClient`. The driver reuses an already-authenticated
+connection from its pool, and authentication happens at connection
+establishment rather than per command. So the probe measured the health of
+connections opened *before* the rotation, not the validity of the credentials
+the process currently holds.
+
+**Investigation.** Opening a brand-new `AsyncMongoClient` with the same URI
+failed immediately with `OperationFailure: bad auth : authentication failed
+(AtlasError 8000)`, which isolated the difference to connection reuse rather
+than to Atlas or the URI.
+
+**Fix.** Restarting the process surfaced the failure correctly — `/readyz`
+then reported the auth error, which is the behaviour a deploy or a container
+restart would produce anyway.
+
+**Why we are not "fixing" this further.** Forcing a fresh authenticated
+connection on every readiness probe would add latency and connection churn to
+an endpoint that platforms poll frequently, to detect a condition that any
+restart already reveals. The honest characterisation, now recorded here and in
+the endpoint's docstring, is that `/readyz` reports **the health of the current
+connection pool**, not the current validity of credentials.
+
+**Worth knowing generally:** a green health check can describe a stale
+connection rather than a working dependency. This is the same class of problem
+as a load balancer keeping a dying instance in rotation.
+
+---
+
 ## INC-003 — Sandbox and toolchain friction
 
 **Milestone:** M0
