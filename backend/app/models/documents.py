@@ -26,6 +26,8 @@ class Customer(BaseModel):
 
     customer_id: str
     run_id: str
+    #: Seed-stable simulation identity. None on hand-seeded M1/M2 documents.
+    synthetic_customer_key: str | None = None
     name: str
     risk_flags: list[str] = Field(default_factory=list)
     customer_opted_out: bool = False
@@ -177,6 +179,9 @@ class RecoveryCase(BaseModel):
     run_id: str
     subscription_id: str
     customer_id: str
+    #: Seed-stable simulation identities. None on hand-seeded M1/M2 cases.
+    synthetic_case_key: str | None = None
+    synthetic_customer_key: str | None = None
     halt_episode_id: str
     status: RecoveryCaseStatus = RecoveryCaseStatus.OPEN
 
@@ -192,6 +197,13 @@ class RecoveryCase(BaseModel):
 
     card_type: CardType
     risk_flags: list[str] = Field(default_factory=list)
+    #: Customer snapshot at case open. Defaults keep M1/M2 documents valid.
+    historical_payment_success_rate: float = 0.75
+    previous_failure_count: int = 0
+    previous_halt_count: int = 0
+    subscription_age_days: int = 0
+    customer_opted_out: bool = False
+    has_active_dispute: bool = False
     policy_version: str
 
     attempt_count: int = 0

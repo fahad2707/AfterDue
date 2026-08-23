@@ -110,6 +110,22 @@ class RecoveryWindowService:
             halt_duration_days=backlog.halt_duration_days,
             card_type=subscription.card_type,
             risk_flags=risk_flags,
+            historical_payment_success_rate=(
+                customer.historical_payment_success_rate if customer else 0.75
+            ),
+            previous_failure_count=(
+                customer.previous_failure_count if customer else 0
+            ),
+            previous_halt_count=customer.previous_halt_count if customer else 0,
+            subscription_age_days=(
+                customer.subscription_age_days if customer else 0
+            ),
+            customer_opted_out=(
+                customer.customer_opted_out if customer else False
+            ),
+            has_active_dispute=(
+                customer.has_active_dispute if customer else False
+            ),
             policy_version=get_settings().policy_version,
             attempt_count=0,
             last_contact_at=None,

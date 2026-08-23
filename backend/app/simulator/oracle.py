@@ -3,9 +3,9 @@
 The oracle knows a case, an action, and a run seed. It does not know which
 strategy asked. Asking twice with the same triple returns the same answer.
 
-Hidden `latent_payment_intent` is derived from (seed, customer_id) and is
-never written onto a recovery case. Strategies cannot see it because they
-never receive this module's internals.
+Randomness is keyed by seed-stable synthetic identity, not by persistence
+IDs. Hidden `latent_payment_intent` is derived from
+`(seed, synthetic_customer_key)` and is never written onto a recovery case.
 
 Assumptions are documented in docs/evaluation.md. They were not tuned to
 produce a target ROC-AUC.
@@ -26,9 +26,9 @@ def _stream(*parts: object) -> Random:
     return Random(int(digest[:16], 16))
 
 
-def latent_payment_intent(run_seed: int, customer_id: str) -> float:
-    """Hidden trait in [0, 1]. Not an input to any strategy."""
-    return round(_stream(run_seed, "latent", customer_id).random(), 6)
+def latent_payment_intent(run_seed: int, synthetic_customer_key: str) -> float:
+    """Hidden trait in [0, 1]. Keyed by seed-stable customer identity."""
+    return round(_stream(run_seed, "latent", synthetic_customer_key).random(), 6)
 
 
 def _clip(value: float) -> float:
@@ -72,7 +72,8 @@ class OracleCase:
     """What the oracle is allowed to see. No strategy name."""
 
     case_id: str
-    customer_id: str
+    synthetic_case_key: str
+    synthetic_customer_key: str
     backlog_amount_paise: int
     historical_payment_success_rate: float
     has_dispute: bool
@@ -84,8 +85,8 @@ class OutcomeOracle:
         self.run_seed = run_seed
 
     def decide(self, case: OracleCase, action: ActionType) -> OracleOutcome:
-        rng = _stream(self.run_seed, case.case_id, action.value)
-        latent = latent_payment_intent(self.run_seed, case.customer_id)
+        rng = _stream(self.run_seed, case.synthetic_case_key, action.value)
+        latent = latent_payment_intent(self.run_seed, case.synthetic_customer_key)
         p = recovery_probability(
             action,
             latent=latent,

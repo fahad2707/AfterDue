@@ -257,3 +257,30 @@ comment that *denied* the leak looked like the leak.
 **Fix.** The test now checks the import graph (`from app.simulator.oracle`,
 `OutcomeOracle`, `latent_payment_intent` on `CaseView`) rather than a word
 search.
+
+---
+
+## INC-010 — Same-seed worlds diverged because the oracle hashed `case_id`
+
+**Milestone:** M3
+**Severity:** reproducibility defect; caught by external review, not by the suite
+
+**Problem.** Two `generate` calls with the same `SimulationConfig` and seed
+materialised equivalent subscribers, but oracle outcomes (and therefore
+strategy metrics) differed.
+
+**Cause.** The oracle seeded `Random` from `(run_seed, case_id, action)` and
+latent intent from `(run_seed, customer_id)`. Both persistence IDs embed
+`run_id`, which is unique per generate. The suite only asserted matching
+world-summary *counts* and same-run strategy replay, so the gap was
+invisible.
+
+**Fix.** Seed-stable `synthetic_customer_key` / `synthetic_case_key` (e.g.
+`subscriber_0042_halt_01`) are written onto synthetic customers and cases.
+The oracle now hashes `(run_seed, synthetic_case_key, action)`. Latent
+intent uses `(run_seed, synthetic_customer_key)`. `run_id` / `case_id`
+remain the Mongo isolation keys.
+
+**Prevention.** Integration test generates two seed-42 worlds, asserts
+isolated persistence IDs, identical features, identical latents, identical
+per-action counterfactuals, and identical strategy metrics.

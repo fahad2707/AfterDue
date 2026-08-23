@@ -13,6 +13,8 @@ class RecoveryCaseOut(BaseModel):
     run_id: str
     subscription_id: str
     customer_id: str
+    synthetic_case_key: str | None = None
+    synthetic_customer_key: str | None = None
     halt_episode_id: str
     status: RecoveryCaseStatus
     invoice_ids: list[str]
@@ -25,6 +27,12 @@ class RecoveryCaseOut(BaseModel):
     halt_duration_days: int
     card_type: CardType
     risk_flags: list[str]
+    historical_payment_success_rate: float = 0.75
+    previous_failure_count: int = 0
+    previous_halt_count: int = 0
+    subscription_age_days: int = 0
+    customer_opted_out: bool = False
+    has_active_dispute: bool = False
     policy_version: str
     attempt_count: int
     last_contact_at: datetime | None

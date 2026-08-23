@@ -59,6 +59,23 @@ class RecoveryCaseRepository(Repository):
         cursor = self.col.find(query).sort([("backlog_amount_paise", -1)])
         return [RecoveryCase.model_validate(strip_id(d)) async for d in cursor]
 
+    async def set_synthetic_identity(
+        self,
+        case_id: str,
+        *,
+        synthetic_case_key: str,
+        synthetic_customer_key: str,
+    ) -> None:
+        await self.col.update_one(
+            {"case_id": case_id},
+            {
+                "$set": {
+                    "synthetic_case_key": synthetic_case_key,
+                    "synthetic_customer_key": synthetic_customer_key,
+                }
+            },
+        )
+
     async def update_status(
         self, case_id: str, status: RecoveryCaseStatus, now: datetime
     ) -> RecoveryCase | None:

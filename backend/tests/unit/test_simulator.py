@@ -3,6 +3,11 @@ import inspect
 from app.domain.enums import ActionType
 from app.simulator.config import SimulationConfig
 from app.simulator.costs import consumes_budget
+from app.simulator.identity import (
+    halt_ordinal_from_episode_id,
+    synthetic_case_key,
+    synthetic_customer_key,
+)
 from app.simulator.metrics import aggregate_metrics
 from app.simulator.oracle import (
     OracleCase,
@@ -23,6 +28,7 @@ from app.simulator.strategies import (
 def _view(case_id: str, backlog: int = 499900, **kw) -> CaseView:
     defaults = dict(
         case_id=case_id,
+        synthetic_case_key=case_id,
         backlog_amount_paise=backlog,
         invoice_count=2,
         halt_duration_days=60,
@@ -44,6 +50,12 @@ def _view(case_id: str, backlog: int = 499900, **kw) -> CaseView:
     )
     defaults.update(kw)
     return CaseView(**defaults)
+
+
+def test_synthetic_identity_is_seed_stable_and_independent_of_run():
+    assert synthetic_customer_key(42) == "subscriber_0042"
+    assert synthetic_case_key(42, 1) == "subscriber_0042_halt_01"
+    assert halt_ordinal_from_episode_id("he_2") == 2
 
 
 def test_same_seed_same_population():
@@ -73,16 +85,53 @@ def test_only_reactivated_plans_are_recovery_candidates():
     assert any(p.halt_cycles == 2 for p in people if p.fate is Fate.REACTIVATED)
 
 
+def _oracle_case(case_id: str, customer_key: str = "subscriber_0001", **kw) -> OracleCase:
+    defaults = dict(
+        case_id=case_id,
+        synthetic_case_key=f"{customer_key}_halt_01",
+        synthetic_customer_key=customer_key,
+        backlog_amount_paise=1499700,
+        historical_payment_success_rate=0.7,
+        has_dispute=False,
+        customer_opted_out=False,
+    )
+    defaults.update(kw)
+    return OracleCase(**defaults)
+
+
 def test_oracle_is_deterministic():
-    case = OracleCase("case_x", "cust_x", 1499700, 0.7, False, False)
+    case = _oracle_case("case_x")
     oracle = OutcomeOracle(42)
     first = oracle.decide(case, ActionType.SEND_PAYMENT_LINK)
     second = oracle.decide(case, ActionType.SEND_PAYMENT_LINK)
     assert first == second
 
 
+def test_oracle_ignores_run_specific_persistence_ids():
+    a = _oracle_case("runA_case_anything", "subscriber_0004", backlog_amount_paise=499900)
+    b = _oracle_case("runB_case_different", "subscriber_0004", backlog_amount_paise=499900)
+    oracle = OutcomeOracle(42)
+    for action in (
+        ActionType.NO_ACTION,
+        ActionType.SEND_PAYMENT_LINK,
+        ActionType.ATTEMPT_MANUAL_CHARGE,
+    ):
+        assert oracle.decide(a, action) == oracle.decide(b, action)
+    assert latent_payment_intent(42, "subscriber_0004") == latent_payment_intent(
+        42, "subscriber_0004"
+    )
+    assert latent_payment_intent(42, "run_a_c0004") != latent_payment_intent(
+        42, "subscriber_0004"
+    )
+
+
 def test_oracle_supports_no_action_and_action_specific_outcomes():
-    case = OracleCase("case_y", "cust_y", 499900, 0.6, False, False)
+    case = _oracle_case(
+        "case_y",
+        "subscriber_0002",
+        backlog_amount_paise=499900,
+        historical_payment_success_rate=0.6,
+    )
     oracle = OutcomeOracle(42)
     none = oracle.decide(case, ActionType.NO_ACTION)
     link = oracle.decide(case, ActionType.SEND_PAYMENT_LINK)

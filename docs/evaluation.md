@@ -25,7 +25,7 @@ For each subscriber the population draw (`simulator/population.py`) assigns:
 | second halt episode | 8% of reactivated subscribers |
 | historical payment success | Uniform-ish 0.35–0.95, observable |
 | previous failures / age | Observable integers |
-| `latent_payment_intent` | Hidden in [0, 1], derived from `(seed, customer_id)` |
+| `latent_payment_intent` | Hidden in [0, 1], derived from `(seed, synthetic_customer_key)` |
 
 Default rates (config knobs, not claimed as real):
 
@@ -74,9 +74,10 @@ Integer paise. Not Razorpay prices.
 
 ## Oracle
 
-Given `(run_seed, case_id, action)` the oracle returns a deterministic
-`paid | failed | pending | escalated` outcome and an integer
-`amount_recovered_paise`.
+Given `(run_seed, synthetic_case_key, action)` the oracle returns a
+deterministic `paid | failed | pending | escalated` outcome and an integer
+`amount_recovered_paise`. Persistence IDs (`run_id`, `case_id`) are not
+part of the draw.
 
 Conceptual recovery probability (clipped to [0, 1]):
 
@@ -89,9 +90,9 @@ P(escalate)             = 0
 dispute + any contact   = 0
 ```
 
-A draw `u ~ hash(seed, case_id, action)` decides the realisation. Payment
-links have a thin `pending` band above the paid threshold. The formula was
-not tuned toward a target ROC-AUC.
+A draw `u ~ hash(seed, synthetic_case_key, action)` decides the realisation.
+Payment links have a thin `pending` band above the paid threshold. The
+formula was not tuned toward a target ROC-AUC.
 
 The oracle does not know the strategy name. Counterfactual calls are pure:
 asking what `no_action` would have done does not mutate the case.
@@ -139,13 +140,29 @@ Per strategy, all money integer paise except `recovery_yield` (a ratio):
 - **incremental revenue:** Σ (recovered | chosen action − recovered | no_action).
   Oracle ground truth, not an ML prediction.
 
+## Persistence identity vs simulation identity
+
+Two independently generated runs with the same `SimulationConfig` and seed
+must be the same synthetic world, including hidden traits and counterfactual
+outcomes. They must also stay isolated in Mongo.
+
+| Identity | Examples | Role |
+|---|---|---|
+| Persistence | `run_id`, `customer_id`, `case_id` | Unique per generate. Scopes every Mongo document. |
+| Simulation | `synthetic_customer_key`, `synthetic_case_key` | Derived only from population index and halt ordinal, e.g. `subscriber_0042` / `subscriber_0042_halt_01`. |
+
+The split exists because a database id that embeds `run_id` cannot also be
+the oracle seed. If it were, regenerating the same config would silently
+change every counterfactual. Strategies still emit persistence `case_id`
+when they choose an action; the oracle looks up the matching synthetic key.
+
+Same-seed generates therefore share features, latents, oracle outcomes, and
+strategy metrics. Re-running strategies on one `run_id` remains identical
+as well. A different seed produces a different world.
+
 ## Limitations
 
 - Distributions are invented for a demo, not fitted to Razorpay traffic.
 - The oracle is a toy. A later model that saw the latent would cheat; we
   keep the latent out of `CaseView` so that cheat is structurally hard.
-- Two `generate` calls with the same seed create different `run_id`s but
-  the same world counts and the same relative features. Oracle draws are
-  keyed by `case_id`, which embeds `run_id`, so outcomes are compared by
-  re-running strategies on one run, not by comparing two generates.
 - Rule-based may beat naive. That is allowed. We do not weaken it.

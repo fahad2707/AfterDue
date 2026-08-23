@@ -480,11 +480,14 @@ Every generate produces a unique `run_id`. Customers, subscriptions, invoices,
 events, recovery cases, and the `simulation_runs` row are scoped to it.
 Queries that compare strategies must filter on that id.
 
-Same `config + seed` yields the same population and the same world-summary
-counts. Oracle draws are keyed by `(seed, case_id, action)`. Because `case_id`
-embeds `run_id`, two generate calls are compared by counts, not by replaying
-outcomes. Deterministic strategy replay is `POST /api/simulator/run` twice on
-the same `run_id`.
+Persistence identity (`run_id`, `customer_id`, `case_id`) is run-specific.
+Simulation identity (`synthetic_customer_key`, `synthetic_case_key`) is
+derived only from the population index and halt ordinal
+(`subscriber_0042_halt_01`). Oracle draws and latent intent use the
+simulation keys plus the seed, so two generates with the same config share
+features, hidden traits, counterfactuals, and strategy metrics while
+remaining isolated in Mongo. Re-running strategies on one `run_id` is also
+identical.
 
 Escalation does not consume the intervention budget. Payment-link and manual
 charge do. `NO_ACTION` does not. Costs are simulation assumptions in integer

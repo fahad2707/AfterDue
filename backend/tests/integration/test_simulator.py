@@ -1,6 +1,28 @@
 """M3 simulator: world, baselines, isolation, API."""
 
+from app.domain.enums import ActionType
+from app.simulator.oracle import OracleCase, OutcomeOracle, latent_payment_intent
 from tests.integration.helpers import RUN_ID
+
+_ORACLE_ACTIONS = (
+    ActionType.NO_ACTION,
+    ActionType.SEND_PAYMENT_LINK,
+    ActionType.ATTEMPT_MANUAL_CHARGE,
+)
+_CASE_FEATURES = (
+    "backlog_amount_paise",
+    "invoice_count",
+    "halt_duration_days",
+    "card_type",
+    "risk_flags",
+    "halt_episode_id",
+    "historical_payment_success_rate",
+    "previous_failure_count",
+    "previous_halt_count",
+    "subscription_age_days",
+    "customer_opted_out",
+    "has_active_dispute",
+)
 
 SMALL = {
     "subscriber_count": 24,
@@ -35,22 +57,76 @@ def test_generate_and_get_run(client):
     assert body["world_summary"]["reactivated_count"] >= 1
 
 
-def test_same_seed_same_world_summary(client):
+def _cases(client, run_id: str) -> dict[str, dict]:
+    rows = client.get("/api/recovery-cases", params={"run_id": run_id}).json()
+    by_key = {}
+    for row in rows:
+        key = row["synthetic_case_key"]
+        assert key, row
+        assert row["synthetic_customer_key"]
+        by_key[key] = row
+    return by_key
+
+
+def _oracle_case(row: dict) -> OracleCase:
+    return OracleCase(
+        case_id=row["case_id"],
+        synthetic_case_key=row["synthetic_case_key"],
+        synthetic_customer_key=row["synthetic_customer_key"],
+        backlog_amount_paise=row["backlog_amount_paise"],
+        historical_payment_success_rate=row["historical_payment_success_rate"],
+        has_dispute=row["has_active_dispute"],
+        customer_opted_out=row["customer_opted_out"],
+    )
+
+
+def test_same_seed_reproduces_world_features_latent_and_oracle(client):
     a = _generate(client, seed=42)
     b = _generate(client, seed=42)
-    sa, sb = a["world_summary"], b["world_summary"]
-    for key in (
-        "subscriber_count",
-        "always_active_count",
-        "halted_never_returned_count",
-        "reactivated_count",
-        "recovery_case_count",
-        "revenue_at_risk_paise",
-        "domestic_card_count",
-        "international_card_count",
-    ):
-        assert sa[key] == sb[key], key
     assert a["run_id"] != b["run_id"]
+    assert a["world_summary"] == b["world_summary"]
+
+    cases_a = _cases(client, a["run_id"])
+    cases_b = _cases(client, b["run_id"])
+    assert set(cases_a) == set(cases_b)
+    assert {c["case_id"] for c in cases_a.values()}.isdisjoint(
+        {c["case_id"] for c in cases_b.values()}
+    )
+    assert {c["customer_id"] for c in cases_a.values()}.isdisjoint(
+        {c["customer_id"] for c in cases_b.values()}
+    )
+    assert all(c["run_id"] == a["run_id"] for c in cases_a.values())
+    assert all(c["run_id"] == b["run_id"] for c in cases_b.values())
+
+    oracle = OutcomeOracle(42)
+    for key, left in cases_a.items():
+        right = cases_b[key]
+        for field in _CASE_FEATURES:
+            assert left[field] == right[field], (key, field)
+        assert latent_payment_intent(42, left["synthetic_customer_key"]) == (
+            latent_payment_intent(42, right["synthetic_customer_key"])
+        )
+        for action in _ORACLE_ACTIONS:
+            assert oracle.decide(_oracle_case(left), action) == oracle.decide(
+                _oracle_case(right), action
+            )
+
+    run_a = client.post(
+        "/api/simulator/run",
+        json={"run_id": a["run_id"], "strategies": ["naive", "rule_based"]},
+    )
+    run_b = client.post(
+        "/api/simulator/run",
+        json={"run_id": b["run_id"], "strategies": ["naive", "rule_based"]},
+    )
+    assert run_a.status_code == run_b.status_code == 200
+    assert run_a.json()["strategy_results"] == run_b.json()["strategy_results"]
+
+    again = client.post(
+        "/api/simulator/run",
+        json={"run_id": a["run_id"], "strategies": ["naive", "rule_based"]},
+    )
+    assert again.json()["strategy_results"] == run_a.json()["strategy_results"]
 
 
 def test_different_seed_changes_world(client):

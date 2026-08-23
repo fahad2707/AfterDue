@@ -23,6 +23,8 @@ class CaseView:
     """Decision-time information. Anything hidden from the model stays out."""
 
     case_id: str
+    #: Seed-stable key when present; used only for deterministic ordering.
+    synthetic_case_key: str
     backlog_amount_paise: int
     invoice_count: int
     halt_duration_days: int
@@ -82,7 +84,7 @@ class NaiveStrategy:
     def choose_actions(
         self, cases: Sequence[CaseView], intervention_budget: int
     ) -> list[CaseAction]:
-        ordered = sorted(cases, key=lambda c: c.case_id)
+        ordered = sorted(cases, key=lambda c: c.synthetic_case_key or c.case_id)
         return _apply(ordered, intervention_budget)
 
 
@@ -104,7 +106,7 @@ class RuleBasedStrategy:
         self, cases: Sequence[CaseView], intervention_budget: int
     ) -> list[CaseAction]:
         ordered = sorted(
-            cases, key=lambda c: (-rule_based_score(c), c.case_id)
+            cases, key=lambda c: (-rule_based_score(c), c.synthetic_case_key or c.case_id)
         )
         return _apply(ordered, intervention_budget)
 

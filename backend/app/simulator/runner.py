@@ -162,9 +162,14 @@ class SimulationRunner:
                 )
             )
             policies.append(decision)
+            if not case.synthetic_case_key or not case.synthetic_customer_key:
+                raise RuntimeError(
+                    f"{case.case_id} is missing seed-stable synthetic identity"
+                )
             views.append(
                 CaseView(
                     case_id=case.case_id,
+                    synthetic_case_key=case.synthetic_case_key,
                     backlog_amount_paise=case.backlog_amount_paise,
                     invoice_count=case.invoice_count,
                     halt_duration_days=case.halt_duration_days,
@@ -185,7 +190,8 @@ class SimulationRunner:
             oracle_cases.append(
                 OracleCase(
                     case_id=case.case_id,
-                    customer_id=case.customer_id,
+                    synthetic_case_key=case.synthetic_case_key,
+                    synthetic_customer_key=case.synthetic_customer_key,
                     backlog_amount_paise=case.backlog_amount_paise,
                     historical_payment_success_rate=customer.historical_payment_success_rate,
                     has_dispute=customer.has_active_dispute,

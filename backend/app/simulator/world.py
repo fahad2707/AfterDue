@@ -12,6 +12,11 @@ from app.repositories.subscriptions import SubscriptionRepository
 from app.schemas.events import EventIn
 from app.services.event_ingest import EventIngestService
 from app.simulator.config import SimulationConfig
+from app.simulator.identity import (
+    halt_ordinal_from_episode_id,
+    synthetic_case_key,
+    synthetic_customer_key,
+)
 from app.simulator.population import Fate, SubscriberPlan, draw_population
 
 ORIGIN = datetime(2024, 1, 1, 10, 0, tzinfo=UTC)
@@ -67,6 +72,7 @@ class WorldGenerator:
         plans = draw_population(config)
         for plan in plans:
             await self._materialise(run_id, plan)
+        await self._stamp_synthetic_identities(run_id)
         return plans, await self._summarise(run_id, plans)
 
     async def _materialise(self, run_id: str, plan: SubscriberPlan) -> None:
@@ -79,6 +85,7 @@ class WorldGenerator:
             Customer(
                 customer_id=customer_id,
                 run_id=run_id,
+                synthetic_customer_key=synthetic_customer_key(plan.index),
                 name=name,
                 risk_flags=list(plan.risk_flags),
                 customer_opted_out=plan.customer_opted_out,
@@ -189,6 +196,19 @@ class WorldGenerator:
                     occurred_at=_at(halt_at, days=30 * cycles + 12),
                     run_id=run_id,
                 )
+            )
+
+    async def _stamp_synthetic_identities(self, run_id: str) -> None:
+        """Write seed-stable keys onto cases created by the real recovery path."""
+        cases = RecoveryCaseRepository(self.customers.db)
+        for case in await cases.list_by_run(run_id):
+            suffix = case.subscription_id.rsplit("_s", 1)[-1]
+            index = int(suffix)
+            ordinal = halt_ordinal_from_episode_id(case.halt_episode_id)
+            await cases.set_synthetic_identity(
+                case.case_id,
+                synthetic_case_key=synthetic_case_key(index, ordinal),
+                synthetic_customer_key=synthetic_customer_key(index),
             )
 
     async def _summarise(
