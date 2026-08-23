@@ -1,6 +1,7 @@
 import { AuditTimeline } from "@/components/cases/AuditTimeline";
 import { BacklogTable } from "@/components/cases/BacklogTable";
 import { LifecycleTimeline } from "@/components/cases/LifecycleTimeline";
+import { ModelPanel } from "@/components/cases/ModelPanel";
 import { PolicyPanel } from "@/components/cases/PolicyPanel";
 import { WhyThisCase } from "@/components/cases/WhyThisCase";
 import { EmptyState } from "@/components/ui/StateBlock";
@@ -90,6 +91,7 @@ export function CaseDetailView({
         )}
       </section>
 
+      <ModelPanel analysis={detail.model_analysis ?? row.model_analysis} />
       <WhyThisCase caseRow={row} policy={detail.policy} />
       <PolicyPanel policy={detail.policy} />
 

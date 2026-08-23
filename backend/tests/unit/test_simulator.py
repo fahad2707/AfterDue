@@ -39,6 +39,10 @@ def _view(case_id: str, backlog: int = 499900, **kw) -> CaseView:
         previous_failure_count=1,
         previous_halt_count=1,
         subscription_age_days=400,
+        plan_amount_paise=backlog,
+        mandate_max_amount_paise=backlog,
+        has_dispute=False,
+        customer_opted_out=False,
         allowed_actions=(
             ActionType.NO_ACTION,
             ActionType.SEND_PAYMENT_LINK,

@@ -1,0 +1,177 @@
+{
+  "model_version": "m5-v1",
+  "model_type": "logistic_regression",
+  "calibrated": false,
+  "trained_at": "2026-08-23T03:56:18.715302+00:00",
+  "dataset_seed": 42,
+  "n_examples": 20000,
+  "sklearn_version": "1.9.0",
+  "feature_names": [
+    "backlog_amount_paise",
+    "invoice_count",
+    "halt_duration_days",
+    "days_since_reactivation",
+    "historical_payment_success_rate",
+    "previous_failure_count",
+    "previous_halt_count",
+    "subscription_age_days",
+    "plan_amount_paise",
+    "risk_flag_count",
+    "mandate_max_amount_paise",
+    "has_dispute",
+    "customer_opted_out",
+    "card_type",
+    "action"
+  ],
+  "feature_schema_hash": "ab0804a11c5640ffa0fde0473b82186a6fee7d801bca2689ab79588afcaeede1",
+  "selection_reason": "logistic_regression selected on validation Brier (0.1955 vs logistic_regression 0.1955, hist_gradient_boosting 0.1967). Raw probabilities kept (calibration val Brier 0.1958 was not better).",
+  "validation": {
+    "logistic_regression": {
+      "model_type": "logistic_regression",
+      "precision": 0.5444078947368421,
+      "recall": 0.6439688715953308,
+      "f1": 0.5900178253119429,
+      "roc_auc": 0.701491536521247,
+      "brier": 0.1955306214063809,
+      "calibrated": false,
+      "confusion": [
+        [
+          1419,
+          554
+        ],
+        [
+          366,
+          662
+        ]
+      ],
+      "calibration_bins": {
+        "mean_predicted": [
+          0.16242418815628076,
+          0.17429422081215326,
+          0.1827368688744621,
+          0.19125738726805164,
+          0.2019296074437716,
+          0.2965426741559042,
+          0.5141320049741598,
+          0.5356974861914983,
+          0.5549666632526405,
+          0.576670751370106
+        ],
+        "fraction_positive": [
+          0.15614617940199335,
+          0.17666666666666667,
+          0.18,
+          0.19666666666666666,
+          0.23,
+          0.32,
+          0.5233333333333333,
+          0.5433333333333333,
+          0.5333333333333333,
+          0.5666666666666667
+        ]
+      }
+    },
+    "hist_gradient_boosting": {
+      "model_type": "hist_gradient_boosting",
+      "precision": 0.535253227408143,
+      "recall": 0.52431906614786,
+      "f1": 0.5297297297297298,
+      "roc_auc": 0.6898903682199973,
+      "brier": 0.19665889155964839,
+      "calibrated": false,
+      "confusion": [
+        [
+          1505,
+          468
+        ],
+        [
+          489,
+          539
+        ]
+      ],
+      "calibration_bins": {
+        "mean_predicted": [
+          0.162370804472654,
+          0.18694202300363677,
+          0.19494000031488692,
+          0.20398527674841424,
+          0.21241399756197024,
+          0.29354926578451007,
+          0.49550150797426834,
+          0.5241977763561391,
+          0.5478733662582278,
+          0.5761057176575208
+        ],
+        "fraction_positive": [
+          0.17880794701986755,
+          0.2040133779264214,
+          0.19666666666666666,
+          0.19873817034700317,
+          0.21201413427561838,
+          0.2733333333333333,
+          0.54,
+          0.5166666666666667,
+          0.5633333333333334,
+          0.5433333333333333
+        ]
+      }
+    }
+  },
+  "test": {
+    "model_type": "logistic_regression",
+    "precision": 0.5129032258064516,
+    "recall": 0.636,
+    "f1": 0.5678571428571428,
+    "roc_auc": 0.6857194999999999,
+    "brier": 0.196985391969927,
+    "calibrated": false,
+    "confusion": [
+      [
+        1396,
+        604
+      ],
+      [
+        364,
+        636
+      ]
+    ],
+    "calibration_bins": {
+      "mean_predicted": [
+        0.16200313985093534,
+        0.1740493881038879,
+        0.18276431144513652,
+        0.1912386908440324,
+        0.20176331894668723,
+        0.31853287820310977,
+        0.5172085184098946,
+        0.5372764423603211,
+        0.5563350593626637,
+        0.577855478955836
+      ],
+      "fraction_positive": [
+        0.17666666666666667,
+        0.17,
+        0.25333333333333335,
+        0.2,
+        0.16,
+        0.32,
+        0.47,
+        0.5,
+        0.5533333333333333,
+        0.53
+      ]
+    }
+  },
+  "split": {
+    "train": 13999,
+    "validation": 3001,
+    "test": 3000,
+    "method": "GroupShuffleSplit by world_seed:synthetic_case_key"
+  },
+  "synthetic": true,
+  "business_metrics": {
+    "held_out_positive_rate": 0.3333333333333333,
+    "held_out_mean_predicted": 0.34190272264825045,
+    "note": "Classification quality on grouped test split. Strategy economics are measured on simulation runs, not this set."
+  }
+}

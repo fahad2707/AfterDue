@@ -42,12 +42,15 @@ export default async function CasesPage({
     <div className="space-y-6">
       <header>
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-          Sorted by backlog
+          {result.data.some((row) => row.model_analysis)
+            ? "Sorted by expected incremental recovery"
+            : "Sorted by backlog"}
         </p>
         <h2 className="mt-2 text-3xl font-medium tracking-tight">Recovery cases</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-          Largest historical backlog first. This is not model ranking. M5 will
-          add incremental-recovery priority.
+          Model ranking uses expected incremental recovery when an active
+          model exists. Policy still decides which actions are eligible.
+          Estimates are synthetic, not guaranteed recovery.
         </p>
       </header>
       {result.data.length === 0 ? (

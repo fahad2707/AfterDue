@@ -34,3 +34,11 @@ export function formatCount(value: number | null | undefined): string {
   if (value == null) return "—";
   return new Intl.NumberFormat("en-IN").format(value);
 }
+
+/** Probability difference as percentage points. 0.36 → +36.0 pp */
+export function formatLiftPp(uplift: number | null | undefined): string {
+  if (uplift == null || Number.isNaN(uplift)) return "—";
+  const points = uplift * 100;
+  const sign = points > 0 ? "+" : "";
+  return `${sign}${points.toFixed(1)} pp`;
+}

@@ -8,6 +8,7 @@ from app.repositories.audit import AuditRepository
 from app.repositories.customers import CustomerRepository
 from app.repositories.events import EventRepository
 from app.repositories.invoices import InvoiceRepository
+from app.repositories.model_runs import ModelRunRepository
 from app.repositories.recovery_cases import RecoveryCaseRepository
 from app.repositories.simulation_runs import SimulationRunRepository
 from app.repositories.subscriptions import SubscriptionRepository
@@ -125,5 +126,10 @@ Audit = Annotated[AuditRepository, Depends(get_audit)]
 Cases = Annotated[RecoveryCaseRepository, Depends(get_cases)]
 Ingest = Annotated[EventIngestService, Depends(get_ingest_service)]
 Reconcile = Annotated[ReconciliationService, Depends(get_reconcile)]
+def get_model_runs(db: Db) -> ModelRunRepository:
+    return ModelRunRepository(db)
+
+
 SimRuns = Annotated[SimulationRunRepository, Depends(get_runs)]
 SimRunner = Annotated[SimulationRunner, Depends(get_sim_runner)]
+ModelRuns = Annotated[ModelRunRepository, Depends(get_model_runs)]

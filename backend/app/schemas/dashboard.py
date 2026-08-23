@@ -16,3 +16,4 @@ class DashboardSummary(BaseModel):
     world_summary: dict = Field(default_factory=dict)
     strategy_results: dict = Field(default_factory=dict)
     config: dict = Field(default_factory=dict)
+    reclaim_vs_best_baseline_paise: int | None = None

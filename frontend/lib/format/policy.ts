@@ -39,5 +39,6 @@ export function policyStatusLabel(status: string): string {
 export function strategyLabel(name: string): string {
   if (name === "naive") return "Naive";
   if (name === "rule_based") return "Rule-based";
+  if (name === "reclaim") return "RECLAIM";
   return name;
 }

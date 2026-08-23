@@ -7,6 +7,8 @@ from app.config import get_settings
 from app.domain.enums import ActionType
 from app.domain.policy import PolicyContext
 from app.domain.time import utcnow
+from app.ml.errors import ModelUnavailable
+from app.ml.strategy import ReclaimStrategy
 from app.models.documents import RecoveryCase
 from app.models.simulation import SimulationRun, SimulationStatus
 from app.policy import evaluate_v1
@@ -19,12 +21,12 @@ from app.simulator.costs import consumes_budget
 from app.simulator.metrics import StrategyMetrics, aggregate_metrics
 from app.simulator.oracle import OracleCase, OutcomeOracle
 from app.simulator.strategies import (
-    STRATEGIES,
-    CaseView,
-    NaiveStrategy,
-    RuleBasedStrategy,
+    STRATEGIES as BASELINE_STRATEGIES,
 )
+from app.simulator.strategies import CaseView, NaiveStrategy, RuleBasedStrategy
 from app.simulator.world import DECISION_NOW, WorldGenerator, WorldSummary
+
+STRATEGIES = {**BASELINE_STRATEGIES, ReclaimStrategy.name: ReclaimStrategy}
 
 
 def new_run_id(seed: int) -> str:
@@ -95,7 +97,10 @@ class SimulationRunner:
             cls = STRATEGIES.get(name)
             if cls is None:
                 raise ValueError(f"unknown strategy {name}")
-            strategy = cls()
+            try:
+                strategy = cls()
+            except ModelUnavailable:
+                raise
             actions = strategy.choose_actions(views, config.intervention_budget)
             acted_ids = {a.case_id for a in actions}
             if acted_ids != set(case_ids) or len(actions) != len(case_ids):
@@ -182,6 +187,10 @@ class SimulationRunner:
                     previous_failure_count=customer.previous_failure_count,
                     previous_halt_count=customer.previous_halt_count,
                     subscription_age_days=customer.subscription_age_days,
+                    plan_amount_paise=subscription.plan_amount_paise,
+                    mandate_max_amount_paise=subscription.mandate_max_amount_paise,
+                    has_dispute=customer.has_active_dispute,
+                    customer_opted_out=customer.customer_opted_out,
                     allowed_actions=tuple(decision.allowed_actions),
                     requires_escalation=decision.requires_escalation,
                     stop=decision.stop,
@@ -203,3 +212,4 @@ class SimulationRunner:
 
 # Names referenced by docs / tests so import-graph checks can see the split.
 BASELINE_TYPES = (NaiveStrategy, RuleBasedStrategy)
+RECLAIM_TYPE = ReclaimStrategy

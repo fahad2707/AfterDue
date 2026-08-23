@@ -15,6 +15,7 @@ COLLECTIONS = [
     "audit_logs",
     "recovery_cases",
     "simulation_runs",
+    "model_runs",
 ]
 
 
@@ -33,7 +34,8 @@ def test_db_name() -> str:
 
 
 @pytest.fixture(scope="session")
-def client(mongo_uri: str, test_db_name: str):
+def client(mongo_uri: str, test_db_name: str, tmp_path_factory):
+    artifact = tmp_path_factory.mktemp("model") / "recovery_model.joblib"
     app = build_app(
         APP_ENV="test",
         LOG_LEVEL="WARNING",
@@ -41,6 +43,7 @@ def client(mongo_uri: str, test_db_name: str):
         MONGODB_DB=test_db_name,
         INTERNAL_API_KEY="",
         LLM_ENABLED="false",
+        MODEL_ARTIFACT_PATH=str(artifact),
     )
     # Entering TestClient runs the lifespan, which connects Mongo and creates
     # the indexes the ledger depends on for correctness.

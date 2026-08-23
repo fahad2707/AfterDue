@@ -45,6 +45,7 @@ class RecoveryCaseOut(BaseModel):
     blocked_actions: list[str] = Field(default_factory=list)
     requires_escalation: bool = False
     stop: bool = False
+    model_analysis: dict | None = None
 
     @computed_field
     @property
@@ -60,6 +61,7 @@ class RecoveryCaseDetail(BaseModel):
     subscription_status: str = ""
     subscription_created_at: datetime | None = None
     halt_episodes: list[HaltEpisodeOut] = Field(default_factory=list)
+    model_analysis: dict | None = None
 
 
 class PolicyConfigOut(BaseModel):

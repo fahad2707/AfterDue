@@ -2,7 +2,7 @@ import { formatCount, formatPaiseINR, formatRatio } from "@/lib/format/money";
 import { strategyLabel } from "@/lib/format/policy";
 import type { StrategyMetrics } from "@/types/api";
 
-const ORDER = ["naive", "rule_based"];
+const ORDER = ["naive", "rule_based", "reclaim"];
 
 export function StrategyComparison({
   results,

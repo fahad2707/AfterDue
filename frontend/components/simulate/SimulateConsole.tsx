@@ -72,7 +72,7 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
       const executed = await runBaselines(runId);
       setResults(executed.strategy_results);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Baseline run failed.");
+      setError(err instanceof Error ? err.message : "Strategy run failed.");
     } finally {
       setBusy(null);
     }
@@ -157,7 +157,7 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
               onClick={() => void onRun()}
               className="rounded-sm bg-ink px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-paper-raised disabled:opacity-60"
             >
-              {busy === "run" ? "Running baselines…" : "Run baselines"}
+              {busy === "run" ? "Running strategies…" : "Run Naive / Rule-based / RECLAIM"}
             </button>
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">

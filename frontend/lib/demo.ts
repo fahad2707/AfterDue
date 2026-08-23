@@ -14,4 +14,4 @@ export const DEMO_CONFIG = {
   seed: 42,
 } as const;
 
-export const DEMO_STRATEGIES = ["naive", "rule_based"] as const;
+export const DEMO_STRATEGIES = ["naive", "rule_based", "reclaim"] as const;

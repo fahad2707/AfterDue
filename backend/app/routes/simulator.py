@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 
+from app.ml.errors import ModelUnavailable
 from app.routes.deps import SimRunner, SimRuns
 from app.schemas.simulation import (
     GenerateResponse,
@@ -46,7 +47,12 @@ async def run_strategies(body: RunRequest, runner: SimRunner, runs: SimRuns):
     record = await runs.get(body.run_id)
     if record is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown run_id")
-    results = await runner.run_strategies(body.run_id, body.strategies)
+    try:
+        results = await runner.run_strategies(body.run_id, body.strategies)
+    except ModelUnavailable as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     return RunResponse(
         run_id=body.run_id,
         seed=record.seed,

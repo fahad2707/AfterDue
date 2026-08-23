@@ -35,6 +35,10 @@ class CaseView:
     previous_failure_count: int
     previous_halt_count: int
     subscription_age_days: int
+    plan_amount_paise: int
+    mandate_max_amount_paise: int
+    has_dispute: bool
+    customer_opted_out: bool
     allowed_actions: tuple[ActionType, ...]
     requires_escalation: bool
     stop: bool

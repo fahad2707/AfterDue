@@ -83,6 +83,11 @@ INDEXES: dict[str, list[IndexModel]] = {
         IndexModel([("run_id", ASCENDING)], name="uq_run_id", unique=True),
         IndexModel([("created_at", DESCENDING)], name="created_at_desc"),
     ],
+    "model_runs": [
+        IndexModel([("model_run_id", ASCENDING)], name="uq_model_run_id", unique=True),
+        IndexModel([("trained_at", DESCENDING)], name="trained_at_desc"),
+        IndexModel([("is_active", ASCENDING)], name="is_active"),
+    ],
 }
 
 

@@ -189,7 +189,7 @@ Reclaim/
 | M2 | Backlog reconstruction, recovery cases, deterministic policy engine | done |
 | M3 | Seeded world, counterfactual oracle, naive / rule-based baselines | done |
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | done |
-| M5 | Feature builder, uplift model, calibration, incremental EV | pending |
+| M5 | Feature builder, uplift model, calibration, incremental EV | done |
 | M6 | LLM language layer, validator, bounded agent loop | pending |
 | M7 | Adversarial tests, README, deployment, demo | pending |
 
@@ -532,5 +532,71 @@ invoice counts, backlog paise, and policy reason codes. No LLM.
 
 ### 9.1 What M4 deliberately does not do
 
-No uplift model, no calibration, no model registry, no Claude, no agent
-loop, no payment execution, no "AI recommended" labels.
+No Claude, no agent loop, no payment execution. M5 adds the recovery model
+on top of this console without redesigning it.
+
+---
+
+## 10. M5 — recovery model, uplift, incremental EV
+
+M5 is the first intelligent strategy. It does not train “a payer classifier.”
+It estimates **what changes because we intervene**.
+
+```
+synthetic world
+  → decision-time CaseView
+  → shared feature builder
+  → P(recovery | no_action / payment_link / manual_charge)
+  → estimated uplift
+  → incremental expected value
+  → policy allowed-action filter
+  → rank under the same intervention budget
+  → RECLAIM strategy
+  → same M3 outcome oracle
+  → compare Naive / Rule-based / RECLAIM
+```
+
+**Anti-leakage.** Features come only from `CaseView` + a candidate action.
+`latent_payment_intent`, oracle outcomes, and strategy names cannot enter
+the builder. Training labels may use oracle realizations; inference may not.
+
+**Feature schema hash.** `sha256("v1|" + feature names)`. The joblib
+artifact stores the hash. A mismatch fails loudly.
+
+**Training.** ≈20,000 rows from `dataset_seed`. Action assignment is
+randomized among policy-permitted scoreable actions, including `NO_ACTION`.
+Split is grouped by `world_seed:synthetic_case_key` so one case cannot sit
+in train and test. Test is unused during selection.
+
+**Models.** Logistic Regression and HistGradientBoosting in one sklearn
+`Pipeline`. Selection is validation Brier, not a 0.01 AUC bump. Calibration
+is kept only if it helps held-out Brier.
+
+**Economics.**
+
+```
+uplift(A) = P(A) − P(NO_ACTION)
+incremental_ev_paise(A) = round(backlog × uplift(A) − cost(A))
+```
+
+`NO_ACTION` EV is 0. Negative EV ⇒ no automated intervention.
+
+**Policy always.** The model may score; policy decides eligibility. A blocked
+manual charge is never a candidate. Escalations required by policy are
+preserved and do not consume budget.
+
+**Registry.** `app/ml/artifacts/recovery_model.joblib` + `model_runs`
+metadata. Not MLflow. `POST /api/simulator/run` with `reclaim` and no valid
+artifact returns 409 — no silent fallback.
+
+**Console.** `/` comparison includes RECLAIM. `/cases` sorts by expected
+incremental recovery when analysis exists. Case detail has a Recovery Model
+panel. `/model` shows artifact metrics. Language is “model-estimated
+recovery” and “estimated intervention lift,” never “AI confidence.”
+
+### 10.1 What M5 deliberately does not do
+
+No Claude, no generated explanations, no natural-language audit Q&A, no
+XGBoost/LightGBM/neural nets, no production Razorpay data, no real money
+movement. The M3 world is not retuned so RECLAIM wins.
+

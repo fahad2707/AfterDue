@@ -64,8 +64,17 @@ export function Overview({ data }: { data: DashboardSummary }) {
           hint={
             data.best_baseline_name
               ? strategyLabel(data.best_baseline_name)
-              : "Run baselines on Simulation"
+              : "Run strategies on Simulation"
           }
+        />
+        <Card
+          label="RECLAIM vs best baseline"
+          value={
+            data.reclaim_vs_best_baseline_paise == null
+              ? "—"
+              : formatPaiseINR(data.reclaim_vs_best_baseline_paise)
+          }
+          hint="Incremental recovered revenue vs Naive/Rule-based"
         />
         <Card
           label="Recovery yield"
@@ -83,7 +92,7 @@ export function Overview({ data }: { data: DashboardSummary }) {
       {strategies.length === 0 ? (
         <EmptyState
           title="Baselines have not been run"
-          body="Generate a world, then run Naive and Rule-based on the same seed to compare recovery economics."
+          body="Generate a world, then run Naive, Rule-based, and RECLAIM on the same seed to compare recovery economics."
           href={withRun("/simulate", data.run_id)}
           action="Open simulation"
         />

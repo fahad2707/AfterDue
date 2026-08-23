@@ -11,7 +11,9 @@ class GenerateResponse(BaseModel):
 
 class RunRequest(BaseModel):
     run_id: str
-    strategies: list[str] = Field(default_factory=lambda: ["naive", "rule_based"])
+    strategies: list[str] = Field(
+        default_factory=lambda: ["naive", "rule_based", "reclaim"]
+    )
 
 
 class RunResponse(BaseModel):

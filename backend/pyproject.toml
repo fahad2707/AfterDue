@@ -10,6 +10,9 @@ dependencies = [
     "pydantic-settings>=2.6",
     "pymongo>=4.9",
     "structlog>=24.4",
+    "scikit-learn>=1.9.0",
+    "pandas>=3.0.5",
+    "joblib>=1.5.3",
 ]
 
 [dependency-groups]

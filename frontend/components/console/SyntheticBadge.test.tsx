@@ -51,11 +51,23 @@ describe("strategy comparison", () => {
       synthetic: true,
     };
     const html = renderToStaticMarkup(
-      <StrategyComparison results={{ naive, rule_based: { ...naive, strategy_name: "rule_based" } }} />,
+      <StrategyComparison
+        results={{
+          naive,
+          rule_based: { ...naive, strategy_name: "rule_based" },
+          reclaim: {
+            ...naive,
+            strategy_name: "reclaim",
+            revenue_recovered_paise: 5999300,
+          },
+        }}
+      />,
     );
     expect(html).toContain("₹51,993");
+    expect(html).toContain("₹59,993");
     expect(html).toContain("Naive");
     expect(html).toContain("Rule-based");
-    expect(html).not.toContain("AI");
+    expect(html).toContain("RECLAIM");
+    expect(html).not.toContain("AI confidence");
   });
 });

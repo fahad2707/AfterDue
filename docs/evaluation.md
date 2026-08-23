@@ -166,3 +166,45 @@ as well. A different seed produces a different world.
 - The oracle is a toy. A later model that saw the latent would cheat; we
   keep the latent out of `CaseView` so that cheat is structurally hard.
 - Rule-based may beat naive. That is allowed. We do not weaken it.
+
+## M5 — RECLAIM vs baselines
+
+Same world, same `run_id`, same policy, same oracle, same intervention
+budget. Only the decision rule changes. RECLAIM uses the recovery model
+(uplift × backlog − cost) and never the oracle or latent intent.
+
+Canonical experiment: `subscriber_count=100`, `seed=42`,
+`intervention_budget=25`. World: 32 recovery cases, ₹741,880 at risk.
+
+| Strategy | Recovered | Incremental | Yield | Used | Unnecessary | Escalations | ₹ / intervention |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Naive | ₹237,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
+| Rule-based | ₹237,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
+| RECLAIM | ₹238,456 | ₹95,475 | 32.14% | 25 | 5 | 7 | ₹9,538 |
+
+RECLAIM won by ₹499 incremental recovered revenue versus the best
+baseline (Naive and Rule-based tied). The simulator was not adjusted.
+Replay of the same `run_id` was identical. All three used 25 budget
+slots and preserved the same 7 escalations.
+
+We do **not** require RECLAIM to beat both baselines. If it loses, that
+result is reported. The simulator is not adjusted.
+
+Metrics compared:
+
+- revenue_recovered_paise
+- incremental_revenue_paise
+- recovery_yield
+- interventions_used
+- unnecessary_intervention_count
+- revenue_per_intervention_paise
+- revenue_per_100_cases_paise
+- escalation_count
+- incremental revenue vs best baseline (`reclaim − max(naive, rule_based)`)
+
+Classification quality (precision, recall, F1, ROC-AUC, Brier,
+calibration bins) lives on `/model` and in `docs/model.md`. Accuracy is
+not the headline: probabilities are multiplied by money.
+
+See `docs/model.md` for features, grouped splitting, and model selection.
+

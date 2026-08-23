@@ -4,6 +4,8 @@ from app.config import get_settings
 from app.domain.enums import RecoveryCaseStatus
 from app.domain.policy import PolicyContext, PolicyDecision
 from app.domain.time import utcnow
+from app.ml.case_view import build_case_view
+from app.ml.predict import try_analyze_view
 from app.models.documents import Customer, RecoveryCase, Subscription
 from app.policy import evaluate_v1
 from app.routes.deps import (
@@ -66,6 +68,9 @@ def _case_out(
     decision = (
         _decision(case, customer, subscription) if subscription is not None else None
     )
+    analysis = None
+    if customer is not None and subscription is not None:
+        analysis = try_analyze_view(build_case_view(case, customer, subscription))
     return RecoveryCaseOut(
         **case.model_dump(),
         customer_name=customer.name if customer else case.customer_id,
@@ -74,6 +79,7 @@ def _case_out(
         blocked_actions=[a.value for a in decision.blocked_actions] if decision else [],
         requires_escalation=decision.requires_escalation if decision else False,
         stop=decision.stop if decision else False,
+        model_analysis=analysis,
     )
 
 router = APIRouter(prefix="/api", tags=["recovery"])
@@ -150,8 +156,9 @@ async def get_recovery_case(
         raise HTTPException(status.HTTP_409_CONFLICT, "case subscription is missing")
 
     decision = _decision(case, customer, subscription)
+    case_out = _case_out(case, customer, subscription)
     return RecoveryCaseDetail(
-        case=_case_out(case, customer, subscription),
+        case=case_out,
         invoices=[InvoiceOut(**i.model_dump()) for i in invoice_docs],
         policy=decision,
         customer_name=customer.name if customer else case.customer_id,
@@ -161,7 +168,31 @@ async def get_recovery_case(
             HaltEpisodeOut(**episode.model_dump())
             for episode in subscription.halt_episodes
         ],
+        model_analysis=case_out.model_analysis,
     )
+
+
+@router.get("/recovery-cases/{case_id}/analysis")
+async def get_recovery_case_analysis(
+    case_id: str,
+    cases: Cases,
+    subscriptions: Subscriptions,
+    customers: Customers,
+):
+    case = await cases.get(case_id)
+    if case is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
+    subscription = await subscriptions.get(case.subscription_id)
+    customer = await customers.get(case.customer_id)
+    if subscription is None or customer is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "case entities are missing")
+    analysis = try_analyze_view(build_case_view(case, customer, subscription))
+    if analysis is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "No valid active recovery model exists. Train one with POST /api/model/train.",
+        )
+    return analysis
 
 
 @router.get("/recovery-cases/{case_id}/audit", response_model=list[AuditLogOut])

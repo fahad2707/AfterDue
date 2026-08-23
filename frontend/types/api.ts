@@ -104,6 +104,43 @@ export type DashboardSummary = {
   world_summary: WorldSummary | Record<string, unknown>;
   strategy_results: Record<string, StrategyMetrics>;
   config: SimulationConfig | Record<string, unknown>;
+  reclaim_vs_best_baseline_paise?: number | null;
+};
+
+export type ModelAnalysis = {
+  p_no_action: number;
+  selected_action: string;
+  p_selected_action: number;
+  estimated_uplift: number;
+  expected_incremental_recovery_paise: number;
+  estimated_recovery_no_action_paise: number;
+  estimated_recovery_selected_paise: number;
+  model_version: string;
+  model_type: string;
+  candidates: Array<{
+    action: string;
+    probability: number;
+    estimated_uplift: number;
+    expected_incremental_recovery_paise: number;
+  }>;
+  synthetic: boolean;
+  feature_contributions?: Array<{ feature: string; coefficient: number }> | null;
+};
+
+export type ModelRun = {
+  model_run_id: string;
+  model_version: string;
+  model_type: string;
+  dataset_seed: number;
+  trained_at: string;
+  is_active: boolean;
+  feature_schema_hash: string;
+  n_examples: number;
+  calibrated: boolean;
+  selection_reason: string;
+  metrics: Record<string, unknown>;
+  business_metrics: Record<string, unknown>;
+  synthetic: boolean;
 };
 
 export type RecoveryCase = {
@@ -142,6 +179,7 @@ export type RecoveryCase = {
   blocked_actions: string[];
   requires_escalation: boolean;
   stop: boolean;
+  model_analysis?: ModelAnalysis | null;
 };
 
 export type Invoice = {
@@ -194,6 +232,7 @@ export type RecoveryCaseDetail = {
   subscription_status: string;
   subscription_created_at: string | null;
   halt_episodes: HaltEpisode[];
+  model_analysis?: ModelAnalysis | null;
 };
 
 export type AuditEntry = {

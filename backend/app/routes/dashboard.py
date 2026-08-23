@@ -6,10 +6,13 @@ from app.schemas.dashboard import DashboardSummary
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
 
+BASELINE_NAMES = frozenset({"naive", "rule_based"})
+
+
 def _best_baseline(strategy_results: dict) -> tuple[str | None, int | None, float | None]:
     scored: list[tuple[str, int, float]] = []
     for name, metrics in strategy_results.items():
-        if not isinstance(metrics, dict):
+        if name not in BASELINE_NAMES or not isinstance(metrics, dict):
             continue
         recovered = metrics.get("revenue_recovered_paise")
         if not isinstance(recovered, int):
@@ -20,6 +23,26 @@ def _best_baseline(strategy_results: dict) -> tuple[str | None, int | None, floa
         return None, None, None
     name, recovered, yield_ = max(scored, key=lambda row: (row[1], row[2]))
     return name, recovered, yield_
+
+
+def _reclaim_vs_best(strategy_results: dict) -> int | None:
+    reclaim = strategy_results.get("reclaim")
+    if not isinstance(reclaim, dict):
+        return None
+    reclaim_inc = reclaim.get("incremental_revenue_paise")
+    if not isinstance(reclaim_inc, int):
+        return None
+    best = None
+    for name in BASELINE_NAMES:
+        metrics = strategy_results.get(name)
+        if not isinstance(metrics, dict):
+            continue
+        value = metrics.get("incremental_revenue_paise")
+        if isinstance(value, int):
+            best = value if best is None else max(best, value)
+    if best is None:
+        return None
+    return reclaim_inc - best
 
 
 @router.get("/dashboard/summary", response_model=DashboardSummary)
@@ -49,4 +72,5 @@ async def dashboard_summary(
         world_summary=world,
         strategy_results=strategies,
         config=config,
+        reclaim_vs_best_baseline_paise=_reclaim_vs_best(strategies),
     )
