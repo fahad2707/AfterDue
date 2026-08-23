@@ -187,7 +187,7 @@ Reclaim/
 | M0 | Repo, toolchain, FastAPI, `/healthz`, `/readyz`, Atlas, Next.js shell, proxy | done |
 | M1 | Collections, indexes, idempotent event ingest, state machine, halt episodes, audit trail | done |
 | M2 | Backlog reconstruction, recovery cases, deterministic policy engine | done |
-| M3 | Seeded world, counterfactual oracle, naive / rule-based / RECLAIM strategies | pending |
+| M3 | Seeded world, counterfactual oracle, naive / rule-based baselines | done |
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | pending |
 | M5 | Feature builder, uplift model, calibration, incremental EV | pending |
 | M6 | LLM language layer, validator, bounded agent loop | pending |
@@ -395,6 +395,10 @@ when `halt_episode_id` is already on the invoice. Paid invoices, active-period
 invoices, and invoices from another episode are excluded. Money is
 `sum(amount_paise)` and remains an integer.
 
+`oldest_invoice_at` / `newest_invoice_at` are billing-period timestamps
+(`period_start`), not ingest time (`created_at`). Subscription debt age is
+which cycle is unpaid, not when the invoice event arrived.
+
 ### 7.3 Recovery-case identity and idempotency
 
 One case per halt episode. Unique identity is `(subscription_id, halt_episode_id)`.
@@ -438,12 +442,56 @@ for it.
 
 Every rule carries `DOCUMENTED_PLATFORM_BEHAVIOR`,
 `PRODUCT_DESIGN_ASSUMPTION`, or `SAFETY_GUARDRAIL`. No source URL is stored
-unless we have independently verified the page. In v1 every platform-shaped
-rule is an assumption: we have not verified the Razorpay behaviour, and
-inventing a URL would be worse than saying so. See `docs/policy.md`.
+unless we have independently verified the page.
+
+The domestic-card manual-charge rule is `DOCUMENTED_PLATFORM_BEHAVIOR`, sourced
+from https://razorpay.com/docs/payments/subscriptions/payment-retries/ ("Manual
+charging of a domestic card is not supported."). Mandate cap remains
+`PRODUCT_DESIGN_ASSUMPTION`. See `docs/policy.md`.
 
 ### 7.7 What M2 deliberately does not do
 
 No action execution, no payment links, no simulator, no model, no LLM, no
 agent loop, no dashboard ranking. M2 knows what is recoverable and what is
 allowed. Acting is later.
+
+---
+
+## 8. M3 — synthetic financial environment
+
+M3 is the laboratory. One seeded world, one policy, one budget, one oracle.
+Naive and rule-based baselines choose different actions. Nothing else differs.
+
+```
+SimulationConfig
+  → seeded population draw
+  → WorldGenerator (real ingest / state machine / backlog / cases)
+  → policy v1
+  → NaiveStrategy | RuleBasedStrategy
+  → OutcomeOracle (case + action + seed only)
+  → metrics
+  → simulation_runs
+```
+
+World generation, policy, strategy, oracle, and metrics stay separate.
+Strategies never import the oracle and never receive `latent_payment_intent`.
+
+Every generate produces a unique `run_id`. Customers, subscriptions, invoices,
+events, recovery cases, and the `simulation_runs` row are scoped to it.
+Queries that compare strategies must filter on that id.
+
+Same `config + seed` yields the same population and the same world-summary
+counts. Oracle draws are keyed by `(seed, case_id, action)`. Because `case_id`
+embeds `run_id`, two generate calls are compared by counts, not by replaying
+outcomes. Deterministic strategy replay is `POST /api/simulator/run` twice on
+the same `run_id`.
+
+Escalation does not consume the intervention budget. Payment-link and manual
+charge do. `NO_ACTION` does not. Costs are simulation assumptions in integer
+paise; they are not Razorpay prices. See `docs/evaluation.md`.
+
+### 8.1 What M3 deliberately does not do
+
+No logistic regression, no HistGradientBoosting, no feature-training pipeline,
+no model artifacts, no calibration, no Brier, no uplift prediction, no Claude,
+no agent loop, no frontend comparison charts. Those belong later.

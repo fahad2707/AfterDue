@@ -14,6 +14,7 @@ COLLECTIONS = [
     "events",
     "audit_logs",
     "recovery_cases",
+    "simulation_runs",
 ]
 
 

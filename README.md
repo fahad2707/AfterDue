@@ -22,8 +22,12 @@ an append-only audit trail. Done.
 closed halt episode, opens exactly one recovery case, and evaluates a
 deterministic policy engine. No action is executed.
 
-Still absent by design: simulator, model, LLM, agent loop, and payment
-execution.
+**M3 — Synthetic world and baselines.** Seeded generator, counterfactual
+oracle, naive and rule-based strategies, intervention budget, isolated
+`run_id`s. Done. No ML and no LLM.
+
+Still absent by design: uplift model, Claude, agent loop, dashboard, and
+payment execution.
 
 ---
 
@@ -109,6 +113,10 @@ never touch the `reclaim` database.
 | POST | `/api/recovery-cases/reconcile` | Create missing cases for closed episodes |
 | GET | `/api/policy/config` | Version, rules, reason codes, provenance |
 | POST | `/api/policy/evaluate` | Dry-run policy decision; writes nothing |
+| POST | `/api/simulator/generate` | Seeded synthetic world (`synthetic: true`) |
+| POST | `/api/simulator/run` | Naive / rule-based comparison on one run |
+| GET | `/api/runs` | Recent simulation runs |
+| GET | `/api/runs/{run_id}` | Config, world summary, strategy metrics |
 
 Redelivering an `event_id` answers `200` with `outcome: "duplicate"` and
 changes nothing. See [`docs/architecture.md §6`](docs/architecture.md) for the

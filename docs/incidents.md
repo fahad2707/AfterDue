@@ -218,3 +218,42 @@ found it in one command — which is an argument for doing that at every
 milestone rather than trusting a green suite. M2's simulator replays historical
 timelines by definition, so this would have surfaced later as a total failure
 with a much less obvious cause.
+
+---
+
+## INC-008 — Simulator package init circular-imported SimulationRun
+
+**Milestone:** M3
+**Severity:** real defect; every integration test that built the app failed at import
+
+**Problem.** `pytest tests/integration/test_simulator.py` errored seven times
+in setup with `ImportError: cannot import name 'SimulationRun' from partially
+initialized module 'app.models.simulation'`.
+
+**Cause.** `app.models.simulation` imported `SimulationConfig` from
+`app.simulator.config`. Importing the `app.simulator` package ran
+`simulator/__init__.py`, which imported `SimulationRunner`, which imported
+`SimulationRun` before that class finished defining.
+
+**Fix.** The package init now exports only `SimulationConfig`. Callers that
+need the runner or oracle import those modules directly.
+
+**Prevention.** The integration suite imports the app; a cycle cannot hide
+behind unit tests that import leaf modules.
+
+---
+
+## INC-009 — Leak test failed because a docstring mentioned the oracle
+
+**Milestone:** M3
+**Severity:** test defect, not a strategy leak
+
+**Problem.** `test_strategy_module_cannot_see_oracle_or_latent` failed because
+`strategies.py` contains the sentence "They do not import the oracle."
+
+**Cause.** The test banned the substring `oracle` anywhere in the file. A
+comment that *denied* the leak looked like the leak.
+
+**Fix.** The test now checks the import graph (`from app.simulator.oracle`,
+`OutcomeOracle`, `latent_payment_intent` on `CaseView`) rather than a word
+search.
