@@ -11,6 +11,16 @@ function hasAnalysis(row: RecoveryCase): boolean {
   );
 }
 
+function policyNote(row: RecoveryCase): string {
+  if (row.blocked_actions.includes("attempt_manual_charge")) {
+    return "Manual charge blocked";
+  }
+  if (row.allowed_actions.includes("attempt_manual_charge")) {
+    return "Manual charge allowed";
+  }
+  return "Link / no action only";
+}
+
 export function CaseTable({
   cases,
   runId,
@@ -29,67 +39,69 @@ export function CaseTable({
   });
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1080px] text-left text-sm">
+    <div className="overflow-x-auto rounded-md border border-line bg-paper-raised">
+      <table className="w-full min-w-[860px] table-fixed border-collapse text-left text-sm">
+        <colgroup>
+          <col className="w-[22%]" />
+          <col className="w-[12%]" />
+          <col className="w-[10%]" />
+          <col className="w-[14%]" />
+          <col className="w-[16%]" />
+          <col className="w-[16%]" />
+          <col className="w-[10%]" />
+        </colgroup>
         <thead>
-          <tr className="border-b border-line text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            <th className="py-2 font-medium">Customer</th>
-            <th className="py-2 font-medium">Backlog</th>
-            <th className="py-2 font-medium">Estimated lift</th>
-            <th className="py-2 font-medium">Expected incremental recovery</th>
-            <th className="py-2 font-medium">Recommended action</th>
-            <th className="py-2 font-medium">Policy</th>
-            <th className="py-2 font-medium">Historical success</th>
+          <tr className="border-b border-line bg-sand/40 text-[11px] uppercase tracking-[0.1em] text-ink-soft">
+            <th className="px-4 py-3 font-medium">Customer</th>
+            <th className="px-3 py-3 text-right font-medium">Backlog</th>
+            <th className="px-3 py-3 text-right font-medium">Lift</th>
+            <th className="px-3 py-3 text-right font-medium">Incr. recovery</th>
+            <th className="px-3 py-3 font-medium">Action</th>
+            <th className="px-3 py-3 font-medium">Policy</th>
+            <th className="px-4 py-3 text-right font-medium">Hist. success</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
             const analysis = row.model_analysis;
             return (
-              <tr key={row.case_id} className="border-b border-line/70">
-                <td className="py-3 align-top">
+              <tr key={row.case_id} className="border-b border-line/70 last:border-b-0">
+                <td className="px-4 py-3 align-middle">
                   <Link
                     href={withRun(`/cases/${row.case_id}`, runId)}
-                    className="font-medium text-ink hover:text-forest"
+                    className="block truncate font-medium text-ink hover:text-forest"
                   >
                     {row.customer_name || row.customer_id}
                   </Link>
-                  <p className="mt-0.5 font-mono text-[11px] text-ink-soft">
+                  <p className="mt-0.5 truncate font-mono text-[11px] text-ink-soft">
                     {row.subscription_id}
                   </p>
                 </td>
-                <td className="py-3 align-top font-mono tabular">
+                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
                   {formatPaiseINR(row.backlog_amount_paise)}
                 </td>
-                <td className="py-3 align-top font-mono tabular">
+                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
                   {analysis ? formatLiftPp(analysis.estimated_uplift) : "—"}
                 </td>
-                <td className="py-3 align-top font-mono tabular">
+                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
                   {analysis
                     ? formatPaiseINR(analysis.expected_incremental_recovery_paise)
                     : "—"}
                 </td>
-                <td className="py-3 align-top capitalize">
-                  {analysis ? actionLabel(analysis.selected_action) : "—"}
-                  {analysis?.selected_action === "no_action" ? (
-                    <p className="mt-1 text-[11px] leading-4 text-ink-soft">
-                      Model ranking chose no intervention
-                    </p>
-                  ) : null}
+                <td className="px-3 py-3 align-middle capitalize">
+                  <span className="block truncate">
+                    {analysis ? actionLabel(analysis.selected_action) : "—"}
+                  </span>
                 </td>
-                <td className="py-3 align-top">
-                  <p className="text-xs font-medium">
+                <td className="px-3 py-3 align-middle">
+                  <p className="font-medium leading-5">
                     {policyStatusLabel(row.policy_status)}
                   </p>
-                  <p className="mt-1 max-w-xs text-[11px] leading-4 text-ink-soft">
-                    {row.blocked_actions.includes("attempt_manual_charge")
-                      ? "Manual charge blocked by policy"
-                      : row.allowed_actions.includes("attempt_manual_charge")
-                        ? "Manual charge allowed"
-                        : "Payment link / no action only"}
+                  <p className="mt-0.5 truncate text-[11px] leading-4 text-ink-soft">
+                    {policyNote(row)}
                   </p>
                 </td>
-                <td className="py-3 align-top font-mono tabular">
+                <td className="px-4 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
                   {formatRatio(row.historical_payment_success_rate)}
                 </td>
               </tr>
