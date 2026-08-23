@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.database import mongo
 from app.logging import configure_logging, get_logger
-from app.routes import health, meta
+from app.repositories.indexes import ensure_indexes
+from app.routes import events, health, ledger, meta
 
 settings = get_settings()
 configure_logging(level=settings.log_level, json_output=settings.app_env != "local")
@@ -21,6 +22,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await mongo.connect()
     ok, err = await mongo.ping()
     log.info("startup_mongo_check", ok=ok, detail=err)
+    if ok:
+        # Idempotent, and several of these indexes are correctness constraints
+        # rather than optimisations, so the app must not serve without them.
+        await ensure_indexes(mongo.db)
     yield
     await mongo.close()
     log.info("shutdown_complete")
@@ -69,3 +74,5 @@ async def require_internal_key(request: Request, call_next):
 
 app.include_router(health.router)
 app.include_router(meta.router)
+app.include_router(events.router)
+app.include_router(ledger.router)
