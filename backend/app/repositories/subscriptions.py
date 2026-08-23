@@ -24,6 +24,13 @@ class SubscriptionRepository(Repository):
         doc = strip_id(await self.col.find_one({"subscription_id": subscription_id}))
         return Subscription.model_validate(doc) if doc else None
 
+    async def get_many(self, subscription_ids: list[str]) -> dict[str, Subscription]:
+        if not subscription_ids:
+            return {}
+        cursor = self.col.find({"subscription_id": {"$in": subscription_ids}})
+        found = [Subscription.model_validate(strip_id(d)) async for d in cursor]
+        return {s.subscription_id: s for s in found}
+
     async def list_with_closed_halt_episodes(
         self, run_id: str | None = None
     ) -> list[Subscription]:

@@ -20,3 +20,10 @@ class CustomerRepository(Repository):
     async def get(self, customer_id: str) -> Customer | None:
         doc = strip_id(await self.col.find_one({"customer_id": customer_id}))
         return Customer.model_validate(doc) if doc else None
+
+    async def get_many(self, customer_ids: list[str]) -> dict[str, Customer]:
+        if not customer_ids:
+            return {}
+        cursor = self.col.find({"customer_id": {"$in": customer_ids}})
+        found = [Customer.model_validate(strip_id(d)) async for d in cursor]
+        return {c.customer_id: c for c in found}

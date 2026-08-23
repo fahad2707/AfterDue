@@ -191,6 +191,30 @@ def test_simulator_run_baselines_share_world_and_respect_budget_and_policy(clien
         "revenue_recovered_paise"
     ]
 
+    dash = client.get("/api/dashboard/summary", params={"run_id": run_id})
+    assert dash.status_code == 200
+    summary = dash.json()
+    assert summary["synthetic"] is True
+    assert summary["run_id"] == run_id
+    assert summary["revenue_at_risk_paise"] == naive["revenue_at_risk_paise"]
+    assert summary["intervention_budget"] == 8
+    assert summary["best_baseline_recovery_paise"] == max(
+        naive["revenue_recovered_paise"], rule["revenue_recovered_paise"]
+    )
+    other = client.get("/api/dashboard/summary", params={"run_id": "run_does_not_exist"})
+    assert other.status_code == 404
+
+    listed = client.get("/api/recovery-cases", params={"run_id": run_id}).json()
+    assert listed
+    assert all(c["run_id"] == run_id for c in listed)
+    assert all(c["customer_name"] for c in listed)
+    assert {c["policy_status"] for c in listed} <= {
+        "eligible",
+        "restricted",
+        "escalation_required",
+        "stopped",
+    }
+
 
 def test_m3_e2e_hundred_subscribers(client):
     world = _generate(

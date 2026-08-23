@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.domain.enums import CardType, RecoveryCaseStatus
 from app.domain.money import format_paise
 from app.domain.policy import PolicyContext, PolicyDecision
-from app.schemas.subscriptions import InvoiceOut
+from app.schemas.subscriptions import HaltEpisodeOut, InvoiceOut
 
 
 class RecoveryCaseOut(BaseModel):
@@ -38,6 +38,13 @@ class RecoveryCaseOut(BaseModel):
     last_contact_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    #: Filled at read time so the queue can show a name and policy state.
+    customer_name: str = ""
+    policy_status: str = "eligible"
+    allowed_actions: list[str] = Field(default_factory=list)
+    blocked_actions: list[str] = Field(default_factory=list)
+    requires_escalation: bool = False
+    stop: bool = False
 
     @computed_field
     @property
@@ -49,6 +56,10 @@ class RecoveryCaseDetail(BaseModel):
     case: RecoveryCaseOut
     invoices: list[InvoiceOut]
     policy: PolicyDecision
+    customer_name: str = ""
+    subscription_status: str = ""
+    subscription_created_at: datetime | None = None
+    halt_episodes: list[HaltEpisodeOut] = Field(default_factory=list)
 
 
 class PolicyConfigOut(BaseModel):
