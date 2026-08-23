@@ -30,6 +30,12 @@ class Customer(BaseModel):
     risk_flags: list[str] = Field(default_factory=list)
     customer_opted_out: bool = False
     has_active_dispute: bool = False
+    #: Synthetic observables for later modelling. Defaults keep M1/M2
+    #: documents valid. The oracle's latent intent is NOT stored here.
+    historical_payment_success_rate: float = 0.75
+    previous_failure_count: int = 0
+    previous_halt_count: int = 0
+    subscription_age_days: int = 0
     created_at: datetime
 
 
