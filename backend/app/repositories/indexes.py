@@ -5,7 +5,7 @@ constraints. Where a unique index prevents a class of financial bug, that is
 noted, because dropping one of those "for speed" later would be a mistake.
 """
 
-from pymongo import ASCENDING, IndexModel
+from pymongo import ASCENDING, DESCENDING, IndexModel
 from pymongo.asynchronous.database import AsyncDatabase
 
 from app.logging import get_logger
@@ -63,6 +63,21 @@ INDEXES: dict[str, list[IndexModel]] = {
             unique=True,
         ),
         IndexModel([("run_id", ASCENDING), ("ts", ASCENDING)], name="run_ts"),
+    ],
+    "recovery_cases": [
+        IndexModel([("case_id", ASCENDING)], name="uq_case_id", unique=True),
+        # Correctness: one recovery case per halt episode. Two cases for the
+        # same stranded invoices would be a double recovery.
+        IndexModel(
+            [("subscription_id", ASCENDING), ("halt_episode_id", ASCENDING)],
+            name="uq_subscription_halt_episode",
+            unique=True,
+        ),
+        IndexModel([("run_id", ASCENDING), ("status", ASCENDING)], name="run_status"),
+        IndexModel(
+            [("run_id", ASCENDING), ("backlog_amount_paise", DESCENDING)],
+            name="run_backlog",
+        ),
     ],
 }
 

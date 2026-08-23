@@ -47,6 +47,14 @@ class InvoiceRepository(Repository):
         )
         return result.modified_count > 0
 
+    async def list_for_ids(self, invoice_ids: list[str]) -> list[Invoice]:
+        if not invoice_ids:
+            return []
+        cursor = self.col.find({"invoice_id": {"$in": invoice_ids}}).sort(
+            [("period_start", 1)]
+        )
+        return [Invoice.model_validate(strip_id(d)) async for d in cursor]
+
     async def list_for_subscription(self, subscription_id: str) -> list[Invoice]:
         cursor = self.col.find({"subscription_id": subscription_id}).sort(
             [("period_start", 1)]

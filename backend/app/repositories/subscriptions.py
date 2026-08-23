@@ -24,6 +24,15 @@ class SubscriptionRepository(Repository):
         doc = strip_id(await self.col.find_one({"subscription_id": subscription_id}))
         return Subscription.model_validate(doc) if doc else None
 
+    async def list_with_closed_halt_episodes(self) -> list[Subscription]:
+        """Subscriptions that have at least one closed halt episode.
+
+        Used by reconciliation. An open episode is not a recovery window —
+        the customer has not returned yet.
+        """
+        cursor = self.col.find({"halt_episodes.reactivated_at": {"$ne": None}})
+        return [Subscription.model_validate(strip_id(d)) async for d in cursor]
+
     async def apply_transition(
         self,
         subscription_id: str,

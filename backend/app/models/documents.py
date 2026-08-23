@@ -6,7 +6,7 @@ These are the persisted contracts. API request/response shapes live in
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.enums import (
     Actor,
@@ -15,6 +15,7 @@ from app.domain.enums import (
     EventProcessingStatus,
     EventType,
     InvoiceStatus,
+    RecoveryCaseStatus,
     SubscriptionStatus,
 )
 from app.domain.money import Paise
@@ -27,6 +28,8 @@ class Customer(BaseModel):
     run_id: str
     name: str
     risk_flags: list[str] = Field(default_factory=list)
+    customer_opted_out: bool = False
+    has_active_dispute: bool = False
     created_at: datetime
 
 
@@ -60,6 +63,9 @@ class Subscription(BaseModel):
     plan_amount_paise: Paise
     currency: str = "INR"
     card_type: CardType
+    #: Upper bound the product will treat as chargeable on the mandate.
+    #: PRODUCT_DESIGN_ASSUMPTION until Razorpay behaviour is verified.
+    mandate_max_amount_paise: Paise
     halt_episodes: list[HaltEpisode] = Field(default_factory=list)
 
     #: Logical time of the last accepted state change (the event's occurred_at,
@@ -75,6 +81,17 @@ class Subscription(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_mandate_to_plan(cls, data):
+        """M1 documents did not store a mandate. Treat the plan amount as the
+        cap until an explicit value is written — that is the conservative
+        PRODUCT_DESIGN_ASSUMPTION, not a silent raise."""
+        if isinstance(data, dict) and data.get("mandate_max_amount_paise") is None:
+            data = dict(data)
+            data["mandate_max_amount_paise"] = data.get("plan_amount_paise", 0)
+        return data
 
     @property
     def open_halt_episode(self) -> HaltEpisode | None:
@@ -138,3 +155,41 @@ class AuditLog(BaseModel):
     actor: Actor
     details: dict = Field(default_factory=dict)
     ts: datetime
+
+
+class RecoveryCase(BaseModel):
+    """One closed halt episode with an outstanding unpaid backlog.
+
+    Identity is (subscription_id, halt_episode_id). Two cases for the same
+    episode would mean we believed the same stranded rupees needed two
+    recoveries.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    case_id: str
+    run_id: str
+    subscription_id: str
+    customer_id: str
+    halt_episode_id: str
+    status: RecoveryCaseStatus = RecoveryCaseStatus.OPEN
+
+    invoice_ids: list[str] = Field(default_factory=list)
+    invoice_count: int = 0
+    backlog_amount_paise: Paise
+
+    oldest_invoice_at: datetime | None = None
+    newest_invoice_at: datetime | None = None
+    halted_at: datetime
+    reactivated_at: datetime
+    halt_duration_days: int
+
+    card_type: CardType
+    risk_flags: list[str] = Field(default_factory=list)
+    policy_version: str
+
+    attempt_count: int = 0
+    last_contact_at: datetime | None = None
+
+    created_at: datetime
+    updated_at: datetime

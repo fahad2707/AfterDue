@@ -54,11 +54,59 @@ class AuditEventType(StrEnum):
     HALT_EPISODE_CLOSED = "HALT_EPISODE_CLOSED"
     INVOICE_RECORDED = "INVOICE_RECORDED"
     INVOICE_PAID = "INVOICE_PAID"
+    RECOVERY_WINDOW_OPENED = "RECOVERY_WINDOW_OPENED"
+    BACKLOG_RECONSTRUCTED = "BACKLOG_RECONSTRUCTED"
+    NO_BACKLOG_FOUND = "NO_BACKLOG_FOUND"
+    RECOVERY_CASE_CREATED = "RECOVERY_CASE_CREATED"
+    RECOVERY_CASE_DUPLICATE = "RECOVERY_CASE_DUPLICATE"
+    POLICY_EVALUATED = "POLICY_EVALUATED"
+    RECOVERY_ESCALATED = "RECOVERY_ESCALATED"
 
 
 class Actor(StrEnum):
     SYSTEM = "system"
     EVENT_INGEST = "event_ingest"
+    RECOVERY_WINDOW = "recovery_window"
+    RECONCILIATION = "reconciliation"
+
+
+class RecoveryCaseStatus(StrEnum):
+    OPEN = "open"
+    ESCALATED = "escalated"
+    CLOSED = "closed"
+
+
+class ActionType(StrEnum):
+    NO_ACTION = "no_action"
+    SEND_PAYMENT_LINK = "send_payment_link"
+    ATTEMPT_MANUAL_CHARGE = "attempt_manual_charge"
+    ESCALATE_TO_MERCHANT = "escalate_to_merchant"
+
+
+class Provenance(StrEnum):
+    """Where a policy rule's authority comes from.
+
+    DOCUMENTED_PLATFORM_BEHAVIOR is reserved for independently verified
+    platform docs. PRODUCT_DESIGN_ASSUMPTION is an explicit product choice
+    that has not been verified against Razorpay. SAFETY_GUARDRAIL is ours
+    and does not claim to describe the platform.
+    """
+
+    DOCUMENTED_PLATFORM_BEHAVIOR = "DOCUMENTED_PLATFORM_BEHAVIOR"
+    PRODUCT_DESIGN_ASSUMPTION = "PRODUCT_DESIGN_ASSUMPTION"
+    SAFETY_GUARDRAIL = "SAFETY_GUARDRAIL"
+
+
+class PolicyReasonCode(StrEnum):
+    DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED = (
+        "DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED"
+    )
+    MANDATE_CAP_EXCEEDED = "MANDATE_CAP_EXCEEDED"
+    RISK_FLAG_PRESENT = "RISK_FLAG_PRESENT"
+    ACTIVE_DISPUTE = "ACTIVE_DISPUTE"
+    CUSTOMER_OPTED_OUT = "CUSTOMER_OPTED_OUT"
+    MAX_ATTEMPTS_REACHED = "MAX_ATTEMPTS_REACHED"
+    CONTACT_COOLDOWN_ACTIVE = "CONTACT_COOLDOWN_ACTIVE"
 
 
 class ReasonCode(StrEnum):
