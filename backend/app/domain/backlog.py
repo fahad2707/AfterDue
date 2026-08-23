@@ -56,7 +56,10 @@ def reconstruct_backlog(
             continue
         by_id[invoice.invoice_id] = invoice
 
-    chosen = sorted(by_id.values(), key=lambda i: i.created_at)
+    # Billing-period chronology, not ingest time. A late-delivered invoice
+    # for February is older debt than a March invoice even if it arrived
+    # afterwards (INC-007 taught us those clocks diverge).
+    chosen = sorted(by_id.values(), key=lambda i: (i.period_start, i.invoice_id))
     amount = sum(i.amount_paise for i in chosen)
     # sum() of an empty sequence is the int 0, not a float.
     assert isinstance(amount, int)
@@ -66,8 +69,8 @@ def reconstruct_backlog(
         invoice_ids=[i.invoice_id for i in chosen],
         invoice_count=len(chosen),
         backlog_amount_paise=amount,
-        oldest_invoice_at=chosen[0].created_at if chosen else None,
-        newest_invoice_at=chosen[-1].created_at if chosen else None,
+        oldest_invoice_at=chosen[0].period_start if chosen else None,
+        newest_invoice_at=chosen[-1].period_start if chosen else None,
         halted_at=episode.halted_at,
         reactivated_at=episode.reactivated_at,
         halt_duration_days=halt_duration_days(episode.halted_at, episode.reactivated_at),

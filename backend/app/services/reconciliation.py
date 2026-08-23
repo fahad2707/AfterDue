@@ -48,13 +48,15 @@ class ReconciliationService:
             actor=Actor.RECONCILIATION,
         )
 
-    async def reconcile(self) -> ReconciliationReport:
+    async def reconcile(self, run_id: str | None = None) -> ReconciliationReport:
         created: list[str] = []
         already = 0
         skipped = 0
         examined = 0
 
-        for subscription in await self.subscriptions.list_with_closed_halt_episodes():
+        for subscription in await self.subscriptions.list_with_closed_halt_episodes(
+            run_id
+        ):
             for episode in subscription.halt_episodes:
                 if episode.reactivated_at is None:
                     continue

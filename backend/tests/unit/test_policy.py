@@ -35,6 +35,11 @@ def test_domestic_card_blocks_manual_charge():
         PolicyReasonCode.DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED
         in decision.reason_codes
     )
+    rule = next(r for r in decision.applied_rules if r.rule_id == "domestic_card_no_manual_charge")
+    assert rule.provenance is Provenance.DOCUMENTED_PLATFORM_BEHAVIOR
+    assert rule.source_url == (
+        "https://razorpay.com/docs/payments/subscriptions/payment-retries/"
+    )
 
 
 def test_international_eligible_card_allows_manual_charge():

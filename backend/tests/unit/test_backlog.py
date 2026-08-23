@@ -29,16 +29,18 @@ def invoice(
     status: InvoiceStatus = InvoiceStatus.ISSUED_UNPAID,
     amount: int = 499900,
     created_at: datetime = T0,
+    period_start: datetime | None = None,
     subscription_id: str = "sub_priya",
     cycle: str = "2026-02",
 ) -> Invoice:
+    start = period_start if period_start is not None else created_at
     return Invoice(
         invoice_id=invoice_id,
         run_id="run_test",
         subscription_id=subscription_id,
         billing_cycle=cycle,
-        period_start=created_at,
-        period_end=created_at + timedelta(days=30),
+        period_start=start,
+        period_end=start + timedelta(days=30),
         amount_paise=amount,
         status=status,
         halt_episode_id=halt_episode_id,
@@ -123,20 +125,36 @@ def test_amount_sum_is_integer_paise():
     assert type(result.backlog_amount_paise) is int
 
 
-def test_oldest_and_newest_invoice_are_correct():
-    early = T0 + timedelta(days=5)
-    late = T0 + timedelta(days=60)
+def test_oldest_and_newest_invoice_use_billing_period_not_ingest_time():
+    """Debt age is the billing cycle, not when the event arrived.
+
+    A February invoice delivered after a March invoice is still older debt.
+    """
+    feb = datetime(2026, 2, 1, tzinfo=UTC)
+    mar = datetime(2026, 3, 1, tzinfo=UTC)
     result = reconstruct_backlog(
         subscription_id="sub_priya",
         episode=episode(),
         invoices=[
-            invoice("late", halt_episode_id="he_1", created_at=late, cycle="2026-04"),
-            invoice("early", halt_episode_id="he_1", created_at=early, cycle="2026-02"),
+            invoice(
+                "late_arrival_feb",
+                halt_episode_id="he_1",
+                created_at=datetime(2026, 5, 1, tzinfo=UTC),
+                period_start=feb,
+                cycle="2026-02",
+            ),
+            invoice(
+                "on_time_mar",
+                halt_episode_id="he_1",
+                created_at=datetime(2026, 3, 10, tzinfo=UTC),
+                period_start=mar,
+                cycle="2026-03",
+            ),
         ],
     )
-    assert result.oldest_invoice_at == early
-    assert result.newest_invoice_at == late
-    assert result.invoice_ids == ["early", "late"]
+    assert result.oldest_invoice_at == feb
+    assert result.newest_invoice_at == mar
+    assert result.invoice_ids == ["late_arrival_feb", "on_time_mar"]
 
 
 def test_halt_duration_is_calendar_days():

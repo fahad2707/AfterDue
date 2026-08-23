@@ -49,10 +49,14 @@ async def list_recovery_cases(
 
 
 @router.post("/recovery-cases/reconcile", response_model=ReconcileReportOut)
-async def reconcile_recovery_cases(reconcile: Reconcile):
+async def reconcile_recovery_cases(
+    reconcile: Reconcile,
+    run_id: str | None = Query(default=None, description="Scope to one run."),
+):
     """Find closed halt episodes with unpaid backlog and no case, and create
-    the missing cases. Safe to call repeatedly."""
-    report = await reconcile.reconcile()
+    the missing cases. Safe to call repeatedly. Pass run_id so a simulation
+    repair cannot touch another run."""
+    report = await reconcile.reconcile(run_id=run_id)
     return ReconcileReportOut(
         examined_episodes=report.examined_episodes,
         created_case_ids=report.created_case_ids,

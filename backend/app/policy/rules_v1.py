@@ -5,9 +5,9 @@ to test than the rules themselves and would hide the safety boundary in a
 parser. Versioning is the `POLICY_VERSION` constant plus `policy_version` on
 every decision and every recovery case.
 
-No rule in this file is DOCUMENTED_PLATFORM_BEHAVIOR. We have not independently
-verified the corresponding Razorpay pages, and inventing a source URL would be
-worse than an honest assumption.
+The domestic-card manual-charge rule is the only DOCUMENTED_PLATFORM_BEHAVIOR
+entry. Source: Razorpay Payment Retries, independently re-read for M3.
+Mandate cap remains an assumption.
 """
 
 from collections.abc import Callable, Sequence
@@ -35,8 +35,8 @@ def domestic_card(context: PolicyContext) -> RuleHit | None:
     return RuleHit(
         rule_id="domestic_card_no_manual_charge",
         reason_code=PolicyReasonCode.DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED,
-        provenance=Provenance.PRODUCT_DESIGN_ASSUMPTION,
-        source_url=None,
+        provenance=Provenance.DOCUMENTED_PLATFORM_BEHAVIOR,
+        source_url="https://razorpay.com/docs/payments/subscriptions/payment-retries/",
         blocked_actions=frozenset({ActionType.ATTEMPT_MANUAL_CHARGE}),
     )
 
@@ -137,8 +137,8 @@ RULE_CATALOG = (
         "reason_code": PolicyReasonCode.DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED.value,
         "condition": "card_type == domestic",
         "effect": "block ATTEMPT_MANUAL_CHARGE; SEND_PAYMENT_LINK remains eligible",
-        "provenance": Provenance.PRODUCT_DESIGN_ASSUMPTION.value,
-        "source_url": None,
+        "provenance": Provenance.DOCUMENTED_PLATFORM_BEHAVIOR.value,
+        "source_url": "https://razorpay.com/docs/payments/subscriptions/payment-retries/",
     },
     {
         "rule_id": "mandate_cap",

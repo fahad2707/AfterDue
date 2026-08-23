@@ -9,12 +9,11 @@ Provenance values:
 
 | Value | Meaning |
 |---|---|
-| `DOCUMENTED_PLATFORM_BEHAVIOR` | Independently verified against platform docs. v1 has none. |
+| `DOCUMENTED_PLATFORM_BEHAVIOR` | Independently verified against platform docs. |
 | `PRODUCT_DESIGN_ASSUMPTION` | An explicit product choice we have not verified. |
 | `SAFETY_GUARDRAIL` | Ours. Does not claim to describe Razorpay. |
 
-No `source_url` is recorded unless we already hold a verified source. None of
-the v1 rules invent one.
+No `source_url` is recorded unless we already hold a verified source.
 
 ---
 
@@ -38,11 +37,17 @@ the v1 rules invent one.
 | Condition | `card_type == domestic` |
 | Effect | Block `attempt_manual_charge`. `send_payment_link` stays eligible unless another rule blocks it. |
 | Reason | `DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED` |
-| Provenance | `PRODUCT_DESIGN_ASSUMPTION` |
-| Source | none |
+| Provenance | `DOCUMENTED_PLATFORM_BEHAVIOR` |
+| Source | https://razorpay.com/docs/payments/subscriptions/payment-retries/ |
 
-Not upgraded to documented platform behaviour. We have not independently
-verified the corresponding Razorpay page.
+Verified against the live Razorpay Payment Retries page before M3. Under
+"Manual Charge on Same Card" the page states, verbatim:
+
+> Manual charging of a domestic card is not supported.
+
+That is the precise rule: `attempt_manual_charge` is blocked when
+`card_type == domestic`. `send_payment_link` is not mentioned there and stays
+eligible. Mandate-cap remains a separate assumption.
 
 ### mandate_cap
 
