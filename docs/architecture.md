@@ -185,8 +185,8 @@ Reclaim/
 | Milestone | Contents | Status |
 |---|---|---|
 | M0 | Repo, toolchain, FastAPI, `/healthz`, `/readyz`, Atlas, Next.js shell, proxy | done |
-| M1 | Collections, indexes, idempotent event ingest, state machine, halt episodes, audit trail | **in review** |
-| M2 | Halt episodes, backlog reconstruction, policy engine | pending |
+| M1 | Collections, indexes, idempotent event ingest, state machine, halt episodes, audit trail | done |
+| M2 | Backlog reconstruction, recovery cases, deterministic policy engine | done |
 | M3 | Seeded world, counterfactual oracle, naive / rule-based / RECLAIM strategies | pending |
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | pending |
 | M5 | Feature builder, uplift model, calibration, incremental EV | pending |
@@ -360,3 +360,90 @@ authority. `payment.succeeded` carrying an `invoice_id` settles that invoice.
 
 No backlog aggregation, no recovery cases, no policy evaluation, no simulator,
 no model, no LLM, no agent loop. M1 is the ledger those things will read.
+
+---
+
+## 7. M2 — backlog and policy
+
+M2 answers a different question from M1: now that this previously halted
+customer has returned, what historical revenue is stranded, and what are we
+allowed to do about it? It still does not act.
+
+### 7.1 Recovery trigger
+
+The only trigger is an accepted `HALTED → ACTIVE` transition. `PENDING → ACTIVE`
+creates no case: there was no halt episode. A no-op redelivery that re-asserts
+ACTIVE creates no case. A closed halt episode with no unpaid invoices writes
+`NO_BACKLOG_FOUND` and stops.
+
+The event route stays thin. After the transition commits, ingestion calls
+`RecoveryWindowService.handle_reactivation`. Recovery logic does not live in
+the state machine.
+
+### 7.2 Backlog reconstruction
+
+Authoritative rule. An invoice is in the backlog if and only if:
+
+```
+invoice.subscription_id == subscription_id
+AND invoice.halt_episode_id == halt_episode_id
+AND invoice.status == ISSUED_UNPAID
+```
+
+Lineage beats inference. We do not reconstruct membership from date windows
+when `halt_episode_id` is already on the invoice. Paid invoices, active-period
+invoices, and invoices from another episode are excluded. Money is
+`sum(amount_paise)` and remains an integer.
+
+### 7.3 Recovery-case identity and idempotency
+
+One case per halt episode. Unique identity is `(subscription_id, halt_episode_id)`.
+`case_id` is deterministic: `case_{subscription_id}_{halt_episode_id}`.
+
+Creation uses the same insert-or-DuplicateKeyError shape as event claiming.
+Check-then-insert is not used. Two reactivation workers cannot produce two
+cases for the same stranded invoices.
+
+### 7.4 Failure boundary and reconciliation
+
+There is no distributed transaction. The state transition is authoritative. If
+recovery-case creation fails after `HALTED → ACTIVE` commits, ingestion still
+returns `processed` and logs `recovery_window_failed`. The subscription is
+correctly ACTIVE; the case is missing.
+
+`ReconciliationService.reconcile` walks closed halt episodes, rebuilds the
+backlog, and calls the same idempotent window opener. It is a callable, not a
+scheduler. `POST /api/recovery-cases/reconcile` exists so the repair can be
+exercised. A second pass creates nothing.
+
+### 7.5 Policy engine
+
+Typed Python, version `v1`. Not a YAML DSL — a homemade expression language
+would be harder to test than the rules and would hide the safety boundary in a
+parser. Versioning is the `POLICY_VERSION` constant plus `policy_version` on
+every decision and every case.
+
+The evaluator is pure. `now` is injected. The engine never calls
+`datetime.now()`, never reads Mongo, and never talks to an LLM.
+
+Default action set: `no_action`, `send_payment_link`, `attempt_manual_charge`,
+`escalate_to_merchant`. Each applicable rule subtracts. Reason codes accumulate.
+A terminal STOP (active dispute) still lets later rules contribute their codes;
+automated collection is then stripped.
+
+`NO_ACTION` cannot be blocked. Escalation stays available when any rule asked
+for it.
+
+### 7.6 Provenance
+
+Every rule carries `DOCUMENTED_PLATFORM_BEHAVIOR`,
+`PRODUCT_DESIGN_ASSUMPTION`, or `SAFETY_GUARDRAIL`. No source URL is stored
+unless we have independently verified the page. In v1 every platform-shaped
+rule is an assumption: we have not verified the Razorpay behaviour, and
+inventing a URL would be worse than saying so. See `docs/policy.md`.
+
+### 7.7 What M2 deliberately does not do
+
+No action execution, no payment links, no simulator, no model, no LLM, no
+agent loop, no dashboard ranking. M2 knows what is recoverable and what is
+allowed. Acting is later.

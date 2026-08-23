@@ -16,10 +16,14 @@ Post-halt subscription revenue recovery agent. Razorpay Buildathon — Track 03.
 
 **M1 — Ledger and events.** Collections and indexes, idempotent event
 ingestion, the subscription state machine, halt episodes, invoice lineage, and
-an append-only audit trail.
+an append-only audit trail. Done.
 
-Still absent by design: recovery logic, policy engine, simulator, model, and
-LLM integration.
+**M2 — Backlog and policy.** Reconstructs the unpaid historical backlog for a
+closed halt episode, opens exactly one recovery case, and evaluates a
+deterministic policy engine. No action is executed.
+
+Still absent by design: simulator, model, LLM, agent loop, and payment
+execution.
 
 ---
 
@@ -99,10 +103,16 @@ never touch the `reclaim` database.
 | GET | `/api/subscriptions/{id}/events` | Event history |
 | GET | `/api/subscriptions/{id}/audit` | Append-only audit trail |
 | GET | `/api/invoices?subscription_id=` | Invoices with halt-episode lineage |
+| GET | `/api/recovery-cases?run_id=` | Cases for a run, largest backlog first |
+| GET | `/api/recovery-cases/{id}` | Case, unpaid invoices, live policy decision |
+| GET | `/api/recovery-cases/{id}/audit` | Subscription audit filtered to the episode |
+| POST | `/api/recovery-cases/reconcile` | Create missing cases for closed episodes |
+| GET | `/api/policy/config` | Version, rules, reason codes, provenance |
+| POST | `/api/policy/evaluate` | Dry-run policy decision; writes nothing |
 
 Redelivering an `event_id` answers `200` with `outcome: "duplicate"` and
 changes nothing. See [`docs/architecture.md §6`](docs/architecture.md) for the
-transition table and the idempotency argument.
+transition table and [`docs/policy.md`](docs/policy.md) for v1 rules.
 
 ---
 
