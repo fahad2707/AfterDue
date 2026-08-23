@@ -188,7 +188,7 @@ Reclaim/
 | M1 | Collections, indexes, idempotent event ingest, state machine, halt episodes, audit trail | done |
 | M2 | Backlog reconstruction, recovery cases, deterministic policy engine | done |
 | M3 | Seeded world, counterfactual oracle, naive / rule-based baselines | done |
-| M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | pending |
+| M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | done |
 | M5 | Feature builder, uplift model, calibration, incremental EV | pending |
 | M6 | LLM language layer, validator, bounded agent loop | pending |
 | M7 | Adversarial tests, README, deployment, demo | pending |
@@ -498,3 +498,39 @@ paise; they are not Razorpay prices. See `docs/evaluation.md`.
 No logistic regression, no HistGradientBoosting, no feature-training pipeline,
 no model artifacts, no calibration, no Brier, no uplift prediction, no Claude,
 no agent loop, no frontend comparison charts. Those belong later.
+
+---
+
+## 9. M4 — vertical demo spine
+
+M4 is an observational console. It does not execute recovery actions and it
+does not claim AI ranking.
+
+```
+/?run=                    Overview: metrics, funnel, baseline comparison
+/cases?run=               Queue sorted by backlog_amount_paise
+/cases/[caseId]           Lifecycle, invoices, policy, provenance, audit
+/simulate                 Generate world + run naive / rule-based
+/policy                   Deterministic rule catalog
+```
+
+**Run scoping.** The selected `run_id` lives in the `run` query parameter.
+Every run-scoped fetch uses `run_id`. The sidebar run selector rewrites that
+parameter; it does not keep a second store. Mixing runs is a bug.
+
+**Proxy.** Browser clients call same-origin `/api/*`. `RECLAIM_API_URL` and
+`INTERNAL_API_KEY` stay on the Next.js server. They are not `NEXT_PUBLIC_`.
+
+**Dashboard data.** `GET /api/dashboard/summary?run_id=` returns the persisted
+world summary and strategy metrics. The frontend formats paise as INR; it
+does not recompute recovery economics.
+
+**Case detail.** The page composes `GET /api/recovery-cases/{id}` (case,
+invoices, live policy, subscription status, halt episodes) and
+`GET /api/recovery-cases/{id}/audit`. Explanation copy is assembled from
+invoice counts, backlog paise, and policy reason codes. No LLM.
+
+### 9.1 What M4 deliberately does not do
+
+No uplift model, no calibration, no model registry, no Claude, no agent
+loop, no payment execution, no "AI recommended" labels.

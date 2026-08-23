@@ -26,7 +26,11 @@ deterministic policy engine. No action is executed.
 oracle, naive and rule-based strategies, intervention budget, isolated
 `run_id`s. Done. No ML and no LLM.
 
-Still absent by design: uplift model, Claude, agent loop, dashboard, and
+**M4 — Vertical demo spine.** Console for simulation, revenue at risk,
+baseline comparison, recovery queue, case detail, policy, and audit.
+Observational only. Done.
+
+Still absent by design: uplift model, Claude, agent loop, and
 payment execution.
 
 ---
@@ -117,6 +121,7 @@ never touch the `reclaim` database.
 | POST | `/api/simulator/run` | Naive / rule-based comparison on one run |
 | GET | `/api/runs` | Recent simulation runs |
 | GET | `/api/runs/{run_id}` | Config, world summary, strategy metrics |
+| GET | `/api/dashboard/summary?run_id=` | Composed overview metrics for one run |
 
 Redelivering an `event_id` answers `200` with `outcome: "duplicate"` and
 changes nothing. See [`docs/architecture.md §6`](docs/architecture.md) for the
