@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------------
+# Secrets. This block is first on purpose: it exists before any credential
+# is ever pasted into this working tree.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!frontend/.env.local.example
+*.pem
+*.key
+secrets.json
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# ---------------------------------------------------------------------------
+# Node / Next.js
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-error.log*
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---------------------------------------------------------------------------
+# RECLAIM local artifacts
+#
+# The default recovery model artifact IS committed (a fresh clone must work
+# without training first), so it is explicitly re-included below.
+# ---------------------------------------------------------------------------
+backend/app/ml/artifacts/*
+!backend/app/ml/artifacts/.gitkeep
+!backend/app/ml/artifacts/recovery_model.joblib
+!backend/app/ml/artifacts/recovery_model.meta.json
+*.log
