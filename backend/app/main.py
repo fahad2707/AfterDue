@@ -14,8 +14,6 @@ settings = get_settings()
 configure_logging(level=settings.log_level, json_output=settings.app_env != "local")
 log = get_logger("reclaim.api")
 
-PUBLIC_PATHS = {"/healthz", "/readyz", "/docs", "/openapi.json", "/redoc"}
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -54,9 +52,13 @@ async def require_internal_key(request: Request, call_next):
 
     Returns a response rather than raising: HTTP middleware sits outside the
     exception-handling middleware, so a raised HTTPException escapes as a 500.
+
+    Reads settings per request rather than closing over an import-time value,
+    so the key can be changed without reimporting the module.
     """
-    if settings.internal_api_key and request.url.path.startswith("/api"):
-        if request.headers.get("x-internal-api-key") != settings.internal_api_key:
+    key = get_settings().internal_api_key
+    if key and request.url.path.startswith("/api"):
+        if request.headers.get("x-internal-api-key") != key:
             log.warning("internal_key_rejected", path=request.url.path)
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
