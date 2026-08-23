@@ -7,7 +7,14 @@ from pymongo import MongoClient
 
 from tests.conftest import build_app, read_env_file_value
 
-COLLECTIONS = ["customers", "subscriptions", "invoices", "events", "audit_logs"]
+COLLECTIONS = [
+    "customers",
+    "subscriptions",
+    "invoices",
+    "events",
+    "audit_logs",
+    "recovery_cases",
+]
 
 
 @pytest.fixture(scope="session")

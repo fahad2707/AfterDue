@@ -13,23 +13,43 @@ def at(**offset) -> str:
     return (T0 + timedelta(**offset)).isoformat()
 
 
-def seed(client, *, status: str = "active", subscription_id: str = SUBSCRIPTION_ID):
+def seed(
+    client,
+    *,
+    status: str = "active",
+    subscription_id: str = SUBSCRIPTION_ID,
+    customer_id: str = CUSTOMER_ID,
+    run_id: str = RUN_ID,
+    card_type: str = "domestic",
+    name: str = "Priya Sharma",
+    risk_flags: list[str] | None = None,
+    customer_opted_out: bool = False,
+    has_active_dispute: bool = False,
+    mandate_max_amount_paise: int | None = None,
+):
     client.post(
         "/api/customers",
-        json={"customer_id": CUSTOMER_ID, "run_id": RUN_ID, "name": "Priya Sharma"},
-    )
-    r = client.post(
-        "/api/subscriptions",
         json={
-            "subscription_id": subscription_id,
-            "run_id": RUN_ID,
-            "customer_id": CUSTOMER_ID,
-            "plan_amount_paise": PLAN_PAISE,
-            "card_type": "domestic",
-            "status": status,
-            "created_at": T0.isoformat(),
+            "customer_id": customer_id,
+            "run_id": run_id,
+            "name": name,
+            "risk_flags": risk_flags or [],
+            "customer_opted_out": customer_opted_out,
+            "has_active_dispute": has_active_dispute,
         },
     )
+    body = {
+        "subscription_id": subscription_id,
+        "run_id": run_id,
+        "customer_id": customer_id,
+        "plan_amount_paise": PLAN_PAISE,
+        "card_type": card_type,
+        "status": status,
+        "created_at": T0.isoformat(),
+    }
+    if mandate_max_amount_paise is not None:
+        body["mandate_max_amount_paise"] = mandate_max_amount_paise
+    r = client.post("/api/subscriptions", json=body)
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -63,6 +83,7 @@ def send_invoice(
     months: int,
     occurred_at: str,
     amount: int = PLAN_PAISE,
+    subscription_id: str = SUBSCRIPTION_ID,
 ):
     return send(
         client,
@@ -70,6 +91,7 @@ def send_invoice(
         "invoice.created",
         occurred_at,
         invoice_payload(invoice_id, cycle, months=months, amount=amount),
+        subscription_id=subscription_id,
     )
 
 
