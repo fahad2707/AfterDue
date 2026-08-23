@@ -1,30 +1,38 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Suspense } from "react";
+
+import { ConsoleShell } from "@/components/console/ConsoleShell";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sans = IBM_Plex_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const mono = IBM_Plex_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
   title: "RECLAIM — Revenue Recovery OS",
   description:
-    "Post-halt subscription revenue recovery agent. Synthetic simulation, not production data.",
+    "Post-halt subscription revenue recovery. Synthetic simulation, not production data.",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${sans.variable} ${mono.variable} h-full antialiased`}>
+      <body className="min-h-full bg-paper text-ink">
+        <Suspense fallback={<div className="min-h-screen bg-paper" />}>
+          <ConsoleShell>{children}</ConsoleShell>
+        </Suspense>
+      </body>
     </html>
   );
 }
