@@ -21,6 +21,16 @@ class MongoConnection:
         self._db: AsyncDatabase | None = None
 
     async def connect(self) -> None:
+        # Always start from a clean slate. Keeping a previous client around
+        # when reconnecting leaves a handle bound to an event loop that may no
+        # longer be running, and any command issued through it blocks forever.
+        # The reference is dropped rather than awaited closed for the same
+        # reason: awaiting it from a different loop is the hang we are avoiding.
+        if self._client is not None:
+            log.info("mongo_client_replaced")
+            self._client = None
+            self._db = None
+
         settings = get_settings()
         if not settings.mongodb_uri:
             log.warning("mongo_uri_missing", detail="MONGODB_URI is empty; /readyz will fail")
