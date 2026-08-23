@@ -3,6 +3,16 @@
 Real failures encountered while building RECLAIM, recorded when they happened.
 Nothing here is reconstructed or invented for the submission.
 
+**Strongest “what broke” candidates for a later pitch (do not dramatize):**
+
+1. **INC-007** — best 2AM candidate. A fixture stamped `last_state_change_at`
+   on create, so every historical replay looked stale. That would have
+   broken M2’s simulator, not just one test.
+2. **INC-010** — same-seed worlds diverged because the oracle hashed
+   `case_id` (which embeds `run_id`).
+3. **INC-011** — opt-out TOCTOU returned `POLICY_BLOCKED` because execute
+   re-scored the model after the flag change.
+
 ---
 
 ## INC-001 — Auth middleware returned 500 instead of 401

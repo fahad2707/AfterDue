@@ -20,7 +20,8 @@ Generation through the real ingest path takes a couple of minutes.
 5. Run baselines (Naive + Rule-based).
 6. Open Overview (`/`). Confirm the same `run` query parameter.
 7. Read revenue at risk, case count, budget, best baseline, yield.
-8. Open Recovery cases. Queue is sorted by backlog, not by a model.
+8. Open Recovery cases. Queue is sorted by expected incremental recovery
+   when a model analysis exists; otherwise by backlog.
 9. Open one case. Confirm lifecycle, halt invoices, policy provenance, audit.
 10. Open `/policy`. Confirm deterministic rules and documented vs assumed provenance.
 

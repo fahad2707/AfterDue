@@ -1,187 +1,238 @@
-# RECLAIM — Revenue Recovery OS
+# RECLAIM
 
 **Recover the revenue that comes back with the customer.**
 
-Post-halt subscription revenue recovery agent. Razorpay Buildathon — Track 03.
+A post-halt subscription recovery agent: it reconstructs stranded invoices,
+estimates whether intervening is worth it, and executes **simulated** recovery
+under a deterministic policy. Built for Razorpay Buildathon Track 03.
 
 > **SYNTHETIC SIMULATION — NOT PRODUCTION DATA.**
-> Every number this system produces comes from a seeded synthetic environment.
-> No Razorpay production data is used, and no real money moves.
-> The language layer is optional and off by default. Economic results
-> never depend on Claude.
+> Every rupee figure is produced by a seeded synthetic laboratory.
+> No Razorpay production data is used. No real payment is attempted.
+> Claude is optional and off the measured economic path.
+
+**What problem?** After `ACTIVE → PENDING → HALTED`, billing cycles keep
+issuing invoices. When the subscriber later returns to `ACTIVE`, that
+historical backlog is still unpaid.
+
+**Why unusual?** Most “recovery” scores who will pay. RECLAIM scores what
+**changes because we intervene**, under a shared intervention budget, then
+re-checks policy immediately before acting.
+
+**What was built?** Ledger → backlog → uplift model → policy → bounded
+agent → simulated executor → audit. A judge-facing console on top.
+
+**What proof exists?** 100-subscriber seed-42 worlds, three strategies on
+the same `run_id`, TOCTOU / idempotency / atomic-budget tests, and a
+real incident log — not reconstructed stories.
 
 ---
 
-## Status
+## The problem
 
-**M0 — Foundation.** FastAPI, Next.js, Atlas, health checks, and a
-server-side API proxy. Done.
+When a subscription goes `ACTIVE → PENDING → HALTED`, the platform can
+keep generating invoices that nobody pays. If the customer later returns
+to `ACTIVE`, those invoices are still open.
 
-**M1 — Ledger and events.** Collections and indexes, idempotent event
-ingestion, the subscription state machine, halt episodes, invoice lineage,
-and an append-only audit trail. Done.
+That `HALTED → ACTIVE` edge is the recovery window. The question is not
+“will they ever pay?” It is “is a specific action worth taking, given
+policy, and would they have paid anyway?”
 
-**M2 — Backlog and policy.** Reconstructs the unpaid historical backlog for a
-closed halt episode, opens exactly one recovery case, and evaluates a
-deterministic policy engine with provenance. No action is executed. Done.
+## Why this matters
 
-**M3 — Synthetic laboratory.** Seeded world generator, hidden-latent
-counterfactual oracle, intervention budget, and two baselines (Naive,
-Rule-based) compared on an identical world. Done.
+A merchant can lose the historical cycles that accumulated during a halt
+even after the customer is back. Recovering them requires:
 
-**M4 — Vertical demo spine.** A financial-ops console: simulation control,
-revenue-at-risk overview, strategy comparison, recovery queue, case detail,
-policy inspector, and audit timeline. Observational only. Done.
+- a correct ledger (no double-claim, no overwritten halt)
+- a policy that will not charge a domestic card or a disputed customer
+- an economic ranking that does not treat “would have paid anyway” as a win
+- an executor that re-validates the world immediately before acting
 
-**M5 — Recovery model.** Shared feature builder, randomized synthetic
-training, per-action probabilities, estimated intervention lift,
-incremental expected value, and a `ReclaimStrategy` that ranks under the
-same policy and intervention budget as the baselines. Done.
+We do not invent industry recovery-rate statistics. This repo is a
+laboratory, not a production collection system.
 
-**M6 — Bounded agent.** Optional Claude side-car (explanations, Q&A,
-extraction), execution-time validator, simulated executor on the M3
-oracle, idempotent `recovery_actions`, and atomic intervention-budget
-claims. No real payment APIs. Done.
+## What RECLAIM does
 
-**Not built yet:** M7 packaging, adversarial suite, and deployment polish.
+```
+Detect halt → reactivation
+  → reconstruct unpaid halt invoices (integer paise)
+  → estimate P(recovery | action) and P(recovery | no_action)
+  → policy filter
+  → rank by incremental expected value under a shared budget
+  → validate again
+  → simulated execution (M3 oracle)
+  → audit + metrics
+```
 
----
+Claude may explain, answer constrained questions, or propose structured
+extraction. It does not decide money movement.
 
-## What this is
+## Architecture
 
-When a subscription goes `ACTIVE → PENDING → HALTED`, billing cycles keep
-generating invoices that nobody pays. If the customer later returns to
-`ACTIVE`, that historical backlog is still stranded.
+```
+Razorpay-like events
+        ↓
+Ledger / state machine / halt episodes
+        ↓
+Post-halt backlog (lineage, not date guesses)
+        ↓
+Feature builder  (no oracle, no latent, no strategy name)
+        ↓
+Recovery model   P(recovery | action)
+        ↓
+Uplift / incremental EV
+        ↓
+Policy filter    (authoritative)
+        ↓
+Bounded agent    observe → analyze → propose → validate → stop
+        ↓
+Simulated execution   (existing M3 oracle only)
+        ↓
+Audit + metrics
+```
 
-RECLAIM treats that `HALTED → ACTIVE` edge as the recovery window:
+Claude is a **side-car**: explanation / Q&A / extraction only.
 
-1. **Ledger.** Every platform event is claimed once. The state machine
-   records halt episodes so a second halt cannot overwrite the first.
-2. **Backlog.** Outstanding invoices for the closed episode are reconstructed
-   by lineage (`halt_episode_id`), not by guessing date windows. Money is
-   integer paise.
-3. **Policy.** A typed v1 engine subtracts disallowed actions. Domestic-card
-   manual charge is documented platform behavior; other rules are labelled
-   assumption or safety guardrail. Policy is authoritative. No action is
-   executed from the console.
-4. **Synthetic laboratory.** A seeded generator materialises customers,
-   halt episodes, and cases through the real ingest path. An outcome oracle
-   answers counterfactuals for `no_action` / payment link / manual charge
-   without knowing which strategy asked. Hidden `latent_payment_intent` is
-   never a strategy input.
-5. **Baselines.** Naive and Rule-based choose among policy-allowed actions
-   under the same intervention budget, on the same `run_id`.
-6. **RECLAIM strategy.** A recovery model scores permitted actions, estimates
-   intervention lift versus doing nothing, and spends the same budget on the
-   highest positive incremental EV. Blocked actions stay blocked. Negative EV
-   is allowed to mean “do nothing.”
-7. **Console.** `/` `/cases` `/cases/[id]` `/simulate` `/model` `/policy`
-   let a reviewer inspect one isolated run: revenue at risk, three-strategy
-   comparison, the queue (model ranking when analysis exists), case-level
-   model estimates, policy provenance, and the audit trail.
+See [`docs/architecture.md`](docs/architecture.md) and
+[`docs/agent.md`](docs/agent.md).
 
-All economic results are synthetic. They are not Razorpay production
-statistics.
+## Intelligence architecture
 
----
+| Layer | Owns | Does not own |
+|---|---|---|
+| **ML** | Per-action probabilities, uplift, incremental EV, ranking | Policy, execution, metrics |
+| **Policy** | What is permitted, escalated, or stopped | Probabilities |
+| **LLM** | Grounded language over supplied facts | Any financial decision |
+| **Agent** | Deterministic orchestration + validator | LLM-chosen actions |
 
-## Requirements
+`LLM_ENABLED` defaults to `false`. The Naive / Rule-based / RECLAIM
+comparison is identical with Claude off.
 
-- **Python 3.12** (managed by [`uv`](https://docs.astral.sh/uv/) — do not use the system Python)
-- **Node 20+** (developed on Node 24)
-- **MongoDB Atlas** connection string
+## Recovery economics
 
----
+```
+uplift(A) = P(recovery | A) − P(recovery | no_action)
 
-## Setup
+incremental_ev(A) = round(backlog_paise × uplift(A) − cost(A))
+```
+
+`NO_ACTION` EV is 0. Negative or zero EV means do nothing. UI copy says
+“estimated intervention lift” and “expected incremental recovery,” never
+“AI confidence.”
+
+## Safety
+
+- **Idempotency** — unique `event_id` and `recovery_actions.idempotency_key`
+- **Policy revalidation** — planning decision and execution decision are both audited
+- **TOCTOU** — plan payment link, customer opts out, execute is blocked
+- **Budget atomicity** — Mongo `find_one_and_update` on remaining slots
+- **Stopping rules** — success, dispute, opt-out, max attempts (3), cooldown, budget, EV ≤ 0
+- **Audit** — append-only per-subscription sequence
+
+## Synthetic evaluation
+
+One seeded world, one policy, one oracle, one intervention budget. Only
+the decision rule changes. Hidden `latent_payment_intent` is never a
+strategy input. Persistence IDs (`run_id`, `case_id`) isolate Mongo;
+oracle seeds use `synthetic_case_key`.
+
+Details: [`docs/evaluation.md`](docs/evaluation.md).
+
+## Baselines
+
+| Strategy | Rule |
+|---|---|
+| **Naive** | Encounter order. First allowed automated action until the budget is gone. |
+| **Rule-based** | Heuristic score (backlog + recency + historical success). Same actions and budget. |
+| **RECLAIM** | Model incremental EV, then the same policy and budget. |
+
+Canonical recorded comparison (`subscriber_count=100`, `seed=42`,
+`intervention_budget=25`; 32 cases; ₹741,880 at risk):
+
+| Strategy | Recovered | Incremental | Yield | Used |
+|---|---:|---:|---:|---:|
+| Naive | ₹237,957 | ₹94,976 | 32.07% | 25 |
+| Rule-based | ₹237,957 | ₹94,976 | 32.07% | 25 |
+| RECLAIM | ₹238,456 | ₹95,475 | 32.14% | 25 |
+
+RECLAIM won by ₹499 incremental recovered revenue on that run. The
+simulator was not tuned to produce the win. Replay of the same `run_id`
+is identical. These are **synthetic** figures, not Razorpay production
+statistics. If a later seed loses, that result is reported.
+
+## Running locally
 
 ```bash
-git clone <repo> && cd Reclaim
+git clone https://github.com/fahad2707/reclaim.git && cd reclaim
 make setup
+# put MONGODB_URI in .env
+make backend      # http://127.0.0.1:8000
+make frontend     # http://localhost:3000
 ```
 
-Then put your Atlas connection string in `.env`:
+Then `make demo-reset` (backend must already be up) to generate the
+canonical world and print console URLs. Or walk
+[`docs/demo-script.md`](docs/demo-script.md).
 
-```
-MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/?retryWrites=true&w=majority
-```
-
-`make setup` copies `.env.example → .env` and
-`frontend/.env.local.example → frontend/.env.local`. Neither real env file is
-ever committed.
-
-## Running
-
-Two terminals:
-
-```bash
-make backend     # FastAPI on http://127.0.0.1:8000
-make frontend    # Next.js on http://localhost:3000
-```
-
-Open http://localhost:3000 — pick or generate a simulation run, then walk
-Overview → Cases → Case detail → Policy. See [`docs/demo-script.md`](docs/demo-script.md).
-
-## Checks
+## Tests
 
 ```bash
 make check              # ruff + tsc + pytest
-make test               # both backend suites in one process
-make test-unit          # no database needed
-make test-integration   # needs MONGODB_URI; uses a throwaway database
+make test               # backend unit + integration (one process)
+make test-unit
+make test-integration   # throwaway reclaim_test_* database
+cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
-Frontend: `cd frontend && npm run lint && npm run typecheck && npm test && npm run build`
+## Deployment
 
-Integration tests create `reclaim_test_<random>` and drop it afterwards. They
-never touch the `reclaim` database.
-
-## API
-
-| Method | Path | Purpose |
+| Piece | Host | Notes |
 |---|---|---|
-| POST | `/api/customers` | Create a customer |
-| POST | `/api/subscriptions` | Create a subscription |
-| POST | `/api/events` | Ingest one platform event (idempotent) |
-| GET | `/api/subscriptions/{id}` | Current state and halt episodes |
-| GET | `/api/subscriptions/{id}/events` | Event history |
-| GET | `/api/subscriptions/{id}/audit` | Append-only audit trail |
-| GET | `/api/invoices?subscription_id=` | Invoices with halt-episode lineage |
-| GET | `/api/recovery-cases?run_id=` | Cases for a run |
-| GET | `/api/recovery-cases/{id}` | Case, unpaid invoices, live policy decision |
-| GET | `/api/recovery-cases/{id}/audit` | Subscription audit filtered to the episode |
-| POST | `/api/recovery-cases/reconcile` | Create missing cases for closed episodes |
-| GET | `/api/policy/config` | Version, rules, reason codes, provenance |
-| POST | `/api/policy/evaluate` | Dry-run policy decision; writes nothing |
-| POST | `/api/simulator/generate` | Seeded synthetic world (`synthetic: true`) |
-| POST | `/api/simulator/run` | Naive / Rule-based / RECLAIM on one run |
-| POST | `/api/model/train` | Train and activate a recovery-model artifact |
-| POST | `/api/model/evaluate` | Held-out evaluation of the active artifact |
-| GET | `/api/model/active` | Active model metadata |
-| GET | `/api/model/metrics` | Classification and Brier summary |
-| GET | `/api/recovery-cases/{id}/analysis` | Per-case model estimates |
-| GET | `/api/runs` | Recent simulation runs |
-| GET | `/api/runs/{run_id}` | Config, world summary, strategy metrics |
-| GET | `/api/dashboard/summary?run_id=` | Composed overview metrics for one run |
+| Frontend | Vercel | Project root `frontend/`. Server-only `RECLAIM_API_URL`, `INTERNAL_API_KEY`. |
+| Backend | Railway | `Dockerfile`, `/healthz`, `/readyz`. |
+| Database | MongoDB Atlas | Use `reclaim_demo`. Never a test DB. |
 
-Redelivering an `event_id` answers `200` with `outcome: "duplicate"` and
-changes nothing. See [`docs/architecture.md`](docs/architecture.md),
-[`docs/policy.md`](docs/policy.md), and [`docs/evaluation.md`](docs/evaluation.md).
-
----
-
-## Architecture notes
-
-Documented in [`docs/architecture.md`](docs/architecture.md).
-Real development failures are logged in [`docs/incidents.md`](docs/incidents.md)
-as they happen — none of them are invented after the fact.
+See [`docs/deployment.md`](docs/deployment.md). Deploy with
+`LLM_ENABLED=false` until the deterministic path is green.
 
 ## Environment variables
 
-See [`.env.example`](.env.example) and
-[`frontend/.env.local.example`](frontend/.env.local.example). Both are committed
-with empty values.
+Templates: [`.env.example`](.env.example),
+[`frontend/.env.local.example`](frontend/.env.local.example).
+No real secrets are committed.
 
-`RECLAIM_API_URL` and `INTERNAL_API_KEY` are intentionally **not** prefixed with
-`NEXT_PUBLIC_`: the browser talks only to same-origin `/api/*`, which the
-Next.js server proxies to FastAPI.
+`RECLAIM_API_URL` and `INTERNAL_API_KEY` must **not** be `NEXT_PUBLIC_`.
+
+## Repository layout
+
+```
+backend/app/          API, ledger, policy, ML, agent, LLM side-car
+backend/tests/        unit + integration + adversarial
+frontend/             Next.js console (proxy at /api/[...proxy])
+docs/                 architecture, policy, evaluation, agent, incidents
+scripts/demo.sh       canonical generate / run / URLs
+```
+
+## Known limitations
+
+- Synthetic data and a synthetic outcome oracle only
+- No production Razorpay connection
+- No real charge, payment-link, WhatsApp, SMS, or voice APIs
+- No partial invoice settlement (full backlog or nothing)
+- LLM optional; explanations fall back to deterministic copy
+- Model trained on the same synthetic family as the demo
+- Policy action space is four actions
+- `POST /api/model/train` writes an ephemeral file on Railway
+
+## What broke during development
+
+Real failures only: [`docs/incidents.md`](docs/incidents.md).
+
+Strongest “what actually broke” candidates: INC-007 (historical events
+rejected as stale), INC-010 (same-seed oracle hashed `case_id`),
+INC-011 (opt-out TOCTOU hid behind a model re-score).
+
+## Disclaimer
+
+This is a synthetic recovery laboratory. It is not a Razorpay production
+system. Simulated payments do not move money.

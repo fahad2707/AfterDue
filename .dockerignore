@@ -1,0 +1,13 @@
+.git
+.venv
+backend/.venv
+backend/.pytest_cache
+backend/.ruff_cache
+frontend/node_modules
+frontend/.next
+**/.DS_Store
+**/__pycache__
+*.md
+docs
+tests
+backend/tests

@@ -49,7 +49,8 @@ async def readyz(response: Response) -> ReadyResponse:
     established, so a pooled connection keeps answering ping after a password
     rotation. A restart surfaces the real state. See docs/incidents.md INC-004.
 
-    Later milestones add the active-model check here.
+    The recovery-model artifact is optional for liveness. Missing Mongo
+    still fails readiness.
     """
     mongo_ok, mongo_err = await mongo.ping()
     checks = {"mongodb": DependencyStatus(ok=mongo_ok, detail=mongo_err)}

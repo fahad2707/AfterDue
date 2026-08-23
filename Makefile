@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test test-unit test-integration lint check clean
+.PHONY: setup backend frontend test test-unit test-integration lint check clean demo demo-reset
 
 UV := $(HOME)/.local/bin/uv
 
@@ -35,3 +35,10 @@ check: lint test
 
 clean:
 	rm -rf backend/.venv frontend/.next frontend/node_modules
+
+# Requires `make backend` in another terminal. Canonical: 100 / seed 42 / budget 25.
+demo:
+	bash scripts/demo.sh
+
+demo-reset:
+	bash scripts/demo.sh reset

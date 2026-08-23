@@ -196,7 +196,11 @@ class RecoveryAgent:
         # blocked execution, not a silent model replan.
         policy = evaluate_case_policy(case, customer, subscription)
         proposal_customer = customer.model_copy(
-            update={"customer_opted_out": False, "has_active_dispute": False}
+            update={
+                "customer_opted_out": False,
+                "has_active_dispute": False,
+                "risk_flags": [],
+            }
         )
         proposal_policy = _policy(
             case, proposal_customer, subscription, ignore_contact_flags=True
@@ -363,19 +367,36 @@ class RecoveryAgent:
 
         sim = await self.runs.get(case.run_id)
         seed = sim.seed if sim is not None else get_settings().sim_default_seed
-        outcome = self.executor.execute(
-            OracleCase(
-                case_id=case.case_id,
-                synthetic_case_key=case.synthetic_case_key or case.case_id,
-                synthetic_customer_key=case.synthetic_customer_key or case.customer_id,
-                backlog_amount_paise=case.backlog_amount_paise,
-                historical_payment_success_rate=customer.historical_payment_success_rate,
-                has_dispute=customer.has_active_dispute,
-                customer_opted_out=customer.customer_opted_out,
-            ),
-            recommended,
-            seed,
-        )
+        try:
+            outcome = self.executor.execute(
+                OracleCase(
+                    case_id=case.case_id,
+                    synthetic_case_key=case.synthetic_case_key or case.case_id,
+                    synthetic_customer_key=case.synthetic_customer_key or case.customer_id,
+                    backlog_amount_paise=case.backlog_amount_paise,
+                    historical_payment_success_rate=customer.historical_payment_success_rate,
+                    has_dispute=customer.has_active_dispute,
+                    customer_opted_out=customer.customer_opted_out,
+                ),
+                recommended,
+                seed,
+            )
+        except Exception:
+            record.status = RecoveryActionStatus.FAILED
+            record.stop_reason = StopReason.SYSTEM_FAILURE
+            await self.actions.save(record)
+            await audit(
+                AuditEventType.ACTION_BLOCKED,
+                {"stop_reason": StopReason.SYSTEM_FAILURE.value},
+            )
+            return await self._halt(
+                agent,
+                case,
+                StopReason.SYSTEM_FAILURE,
+                validation.execution_decision,
+                validation,
+                record,
+            )
         record.status = RecoveryActionStatus.EXECUTED
         record.outcome = outcome.outcome
         record.amount_recovered_paise = outcome.amount_recovered_paise
@@ -442,6 +463,8 @@ class RecoveryAgent:
     ) -> dict:
         if reason is StopReason.ACTIVE_DISPUTE:
             agent.status = AgentRunStatus.ESCALATED
+        elif reason is StopReason.SYSTEM_FAILURE:
+            agent.status = AgentRunStatus.FAILED
         else:
             agent.status = AgentRunStatus.STOPPED
         if reason is StopReason.RECOVERY_SUCCEEDED:

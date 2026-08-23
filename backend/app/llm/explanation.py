@@ -1,3 +1,5 @@
+from pydantic import ValidationError
+
 from app.llm.deterministic import answer as deterministic_answer
 from app.llm.deterministic import explain as deterministic_explain
 from app.llm.deterministic import extract_without_model
@@ -28,7 +30,7 @@ class CaseExplanationService:
                 user=explanation_user(facts),
                 schema=CaseExplanation,
             )
-        except LanguageUnavailable:
+        except (LanguageUnavailable, ValidationError):
             return fallback, "deterministic"
         if not explanation_is_grounded(generated, facts):
             return fallback, "deterministic"

@@ -191,7 +191,7 @@ Reclaim/
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | done |
 | M5 | Feature builder, uplift model, calibration, incremental EV | done |
 | M6 | LLM language layer, validator, bounded agent loop | done |
-| M7 | Adversarial tests, README, deployment, demo | pending |
+| M7 | Adversarial tests, README, deployment, demo | **in progress** |
 
 ---
 
@@ -639,4 +639,24 @@ run + trace, and a small Ask RECLAIM chip list.
 No production Razorpay charge or payment-link API, no WhatsApp / SMS /
 voice, no LLM-controlled money movement, no LLM-written metrics. M7 is
 adversarial hardening and packaging, not a second executor.
+
+---
+
+## 12. M7 — submission readiness
+
+M7 does not add recovery actions or models. It adds adversarial tests,
+deployment packaging, a judge-facing README, and a one-command canonical
+demo (`make demo` / `make demo-reset`).
+
+Canonical configuration remains `subscriber_count=100`, `seed=42`,
+`intervention_budget=25`. Seed was not searched to make RECLAIM win.
+
+`LLM_ENABLED=false` is the deployed default. The committed joblib is the
+demo artifact; Railway must not depend on training a file that disappears
+on restart.
+
+### 12.1 What M7 deliberately does not do
+
+No 5-minute pitch video, no UI redesign, no real payment APIs, no new
+agent actions.
 
