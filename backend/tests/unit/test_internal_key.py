@@ -1,26 +1,15 @@
-import importlib
-
 import pytest
+from fastapi.testclient import TestClient
+
+from tests.conftest import build_app
+from tests.unit.conftest import UNIT_ENV
 
 
 @pytest.fixture
-def keyed_client(monkeypatch):
-    """Boot a second app instance that enforces the shared proxy secret."""
-    monkeypatch.setenv("INTERNAL_API_KEY", "test-secret")
-
-    import app.config
-    import app.main
-
-    app.config.get_settings.cache_clear()
-    main = importlib.reload(app.main)
-
-    from fastapi.testclient import TestClient
-
-    with TestClient(main.app) as c:
+def keyed_client():
+    """App that enforces the shared proxy secret."""
+    with TestClient(build_app(**{**UNIT_ENV, "INTERNAL_API_KEY": "test-secret"})) as c:
         yield c
-
-    app.config.get_settings.cache_clear()
-    importlib.reload(app.main)
 
 
 def test_api_rejects_missing_internal_key(keyed_client):
