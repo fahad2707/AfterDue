@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test lint check clean
+.PHONY: setup backend frontend test test-unit test-integration lint check clean
 
 UV := $(HOME)/.local/bin/uv
 
@@ -15,8 +15,17 @@ backend:
 frontend:
 	cd frontend && npm run dev
 
+# Both suites in one process on purpose: running them separately hid INC-005.
 test:
 	cd backend && $(UV) run pytest -q
+
+# No database required.
+test-unit:
+	cd backend && $(UV) run pytest tests/unit -q
+
+# Needs MONGODB_URI in .env. Uses a throwaway database, never `reclaim`.
+test-integration:
+	cd backend && $(UV) run pytest tests/integration -q
 
 lint:
 	cd backend && $(UV) run ruff check .

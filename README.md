@@ -12,8 +12,14 @@ Post-halt subscription revenue recovery agent. Razorpay Buildathon — Track 03.
 
 ## Status
 
-**M0 — Foundation.** Backend, frontend, and the connection between them.
-No recovery logic, simulator, model, policy engine, or LLM integration yet.
+**M0 — Foundation.** Backend, frontend, and the connection between them. Done.
+
+**M1 — Ledger and events.** Collections and indexes, idempotent event
+ingestion, the subscription state machine, halt episodes, invoice lineage, and
+an append-only audit trail.
+
+Still absent by design: recovery logic, policy engine, simulator, model, and
+LLM integration.
 
 ---
 
@@ -73,9 +79,30 @@ Open http://localhost:3000 — it renders live status for every M0 dependency.
 ## Checks
 
 ```bash
-make check       # ruff + tsc + pytest
-make test        # pytest only
+make check              # ruff + tsc + pytest
+make test               # both suites in one process
+make test-unit          # no database needed
+make test-integration   # needs MONGODB_URI; uses a throwaway database
 ```
+
+Integration tests create `reclaim_test_<random>` and drop it afterwards. They
+never touch the `reclaim` database.
+
+## API (M1)
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/customers` | Create a customer |
+| POST | `/api/subscriptions` | Create a subscription |
+| POST | `/api/events` | Ingest one platform event (idempotent) |
+| GET | `/api/subscriptions/{id}` | Current state and halt episodes |
+| GET | `/api/subscriptions/{id}/events` | Event history |
+| GET | `/api/subscriptions/{id}/audit` | Append-only audit trail |
+| GET | `/api/invoices?subscription_id=` | Invoices with halt-episode lineage |
+
+Redelivering an `event_id` answers `200` with `outcome: "duplicate"` and
+changes nothing. See [`docs/architecture.md §6`](docs/architecture.md) for the
+transition table and the idempotency argument.
 
 ---
 

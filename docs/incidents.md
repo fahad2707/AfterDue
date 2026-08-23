@@ -61,6 +61,66 @@ are listed, and `.env` / `.env.local` are explicitly refused as ignored.
 
 ---
 
+## INC-005 — Test suite hung forever after the two suites ran together
+
+**Milestone:** M1
+**Severity:** real defect in connection lifecycle, surfaced by tests
+
+**Problem.** Unit tests passed. Integration tests passed. Running
+`pytest` over both in one process hung indefinitely with no output — not a
+failure, no traceback, just a process that never returned.
+
+**Cause.** `MongoConnection` is a process-wide singleton. The integration suite
+connects it to a test database; the unit suite then rebuilds the app with an
+empty `MONGODB_URI`, and `connect()` took an early return without clearing the
+existing client. So the unit suite inherited a live `AsyncMongoClient` bound to
+the integration suite's event loop, which had already been torn down. The first
+`/readyz` ping issued a command on a handle whose loop no longer existed and
+blocked forever. `pytest -q` piped through `tail` buffers output, so the hang
+produced total silence rather than a partial run.
+
+**Investigation.** Suspicion fell on the shared singleton because it is the only
+state that survives `importlib.reload(app.main)`. Reading `connect()` showed the
+early return leaving `self._client` untouched.
+
+**Fix.** `connect()` now always clears any existing client before deciding what
+to do. It drops the reference rather than awaiting `close()` on it — awaiting a
+client bound to a dead loop is the very hang being avoided.
+
+**Prevention.** This is a real production behaviour, not only a test artifact:
+any code path that reconnects (a config reload, a retry after an outage) would
+have inherited the same stale handle. The full suite now runs both directories
+in one process on every `make test`, so a regression reproduces immediately.
+
+**Worth knowing generally:** async database clients are bound to the event loop
+that created them. A singleton that outlives its loop is a deadlock waiting for
+a second caller.
+
+---
+
+## INC-006 — A test that measured network latency instead of the invariant
+
+**Milestone:** M1
+**Severity:** flaky test, caught on first run
+
+**Problem.** `test_audit_ordering_survives_identical_timestamps` failed with
+"expected a timestamp collision".
+
+**Cause.** The test wrote several audit entries over HTTP and asserted that at
+least two shared a millisecond timestamp, in order to then prove that `seq`
+still ordered them. Against Atlas, each write takes several milliseconds, so no
+collision occurred. The assertion was really measuring round-trip time.
+
+**Fix.** Freeze the clock with `monkeypatch` so every entry genuinely lands on
+the same millisecond, then assert unique ascending `seq`. The invariant is now
+tested directly instead of being inferred from timing.
+
+**Prevention.** Worth stating as a rule for this codebase: a test that depends
+on how long an I/O call takes is not testing the property it claims to test. It
+will pass on a fast machine, fail in CI, and teach the team to re-run it.
+
+---
+
 ## INC-004 — Readiness reported healthy against dead credentials
 
 **Milestone:** M0
@@ -118,3 +178,43 @@ pinned the backend to Python 3.12 with `backend/.python-version` and
 **Prevention.** Python 3.14 is never used by this project. `uv` resolves 3.12
 from the pin, so contributors and Railway get the same interpreter regardless
 of what the host has installed.
+
+---
+
+## INC-007 — Every historical event was rejected as stale, and the tests said fine
+
+**Milestone:** M1
+**Severity:** real defect; would have blocked M2 entirely
+
+**Problem.** The full M1 test suite passed — 62 tests, including four
+specifically about out-of-order events. A manual `curl` walk through the same
+lifecycle then rejected every single lifecycle event with `STALE_EVENT`.
+
+**Cause.** `POST /api/subscriptions` seeded `last_state_change_at` from
+`created_at`, which defaults to now. Replaying a timeline dated February into a
+subscription created today meant every event's `occurred_at` was older than
+`last_state_change_at`, so the staleness guard refused all of them.
+
+**Why the tests missed it.** The integration helper always passed an explicit
+`created_at` of `2026-01-01` and then sent events at `T0 + hours`. Every test
+timeline ran *forward from the seeded creation time*, so the fixture quietly
+guaranteed the condition the guard needed. The tests were self-consistent and
+wrong together.
+
+**Fix.** `last_state_change_at` is now nullable and starts as `None`. Creating
+a subscription *sets* its state, it does not *change* it, so there is no prior
+transition for an incoming event to contradict. The staleness comparison is
+skipped until the first real transition, after which it applies exactly as
+before.
+
+**Prevention.** Added a regression test that creates a subscription with no
+explicit `created_at` and replays a 2020 timeline into it, then confirms the
+guard still fires for a genuinely older event afterwards.
+
+**Worth knowing generally:** this is the failure mode where a shared test
+fixture encodes the same wrong assumption as the code. The suite cannot catch
+it, because the fixture and the defect agree. Manual exercise of the real API
+found it in one command — which is an argument for doing that at every
+milestone rather than trusting a green suite. M2's simulator replays historical
+timelines by definition, so this would have surfaced later as a total failure
+with a much less obvious cause.

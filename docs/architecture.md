@@ -184,8 +184,8 @@ Reclaim/
 
 | Milestone | Contents | Status |
 |---|---|---|
-| M0 | Repo, toolchain, FastAPI, `/healthz`, `/readyz`, Atlas, Next.js shell, proxy | **in review** |
-| M1 | Collections, indexes, idempotent event ingest, state machine, audit trail | pending |
+| M0 | Repo, toolchain, FastAPI, `/healthz`, `/readyz`, Atlas, Next.js shell, proxy | done |
+| M1 | Collections, indexes, idempotent event ingest, state machine, halt episodes, audit trail | **in review** |
 | M2 | Halt episodes, backlog reconstruction, policy engine | pending |
 | M3 | Seeded world, counterfactual oracle, naive / rule-based / RECLAIM strategies | pending |
 | M4 | Vertical demo spine (dashboard, queue, case detail, audit timeline) | pending |
@@ -203,9 +203,160 @@ answers 503 when any is down. `/api/*` requires the `x-internal-api-key` shared
 secret whenever one is configured; health endpoints are exempt so the platform
 healthcheck works. Logs are structured JSON via structlog.
 
-**Frontend** — Next.js 16 App Router, TypeScript, Tailwind 4.
+**Frontend (M0)** — Next.js 16 App Router, TypeScript, Tailwind 4.
 Server Components call FastAPI directly through `lib/server-api.ts`. Client
 Components call same-origin `/api/*`, which `app/api/[...proxy]/route.ts`
 forwards to FastAPI with the shared secret attached. The backend origin and the
 secret never enter the browser bundle, and CORS is not a browser-side failure
 mode.
+
+---
+
+## 6. M1 — ledger and event engine
+
+M1 builds the persistent record: what happened to a subscription, when, and
+what money was left unpaid as a result. It deliberately makes no decisions.
+
+### 6.1 Idempotency
+
+Payment webhooks are delivered at least once. Redelivery must never produce a
+second state transition or a second charge attempt.
+
+The unique index on `events.event_id` **is** the mechanism. Ingestion *claims*
+an event by inserting it:
+
+```python
+try:
+    await col.insert_one(event.model_dump())
+    return True          # this caller owns processing
+except DuplicateKeyError:
+    return False         # someone already has it
+```
+
+Two concurrent deliveries both attempt the insert; exactly one succeeds. This
+is why the code does not check-then-insert: between the check and the insert
+another worker can pass the same check, and the result is a double transition.
+
+**Ordering is load-bearing.** The claim happens before any mutation, so a
+duplicate reaches nothing that writes. The only thing a duplicate does write is
+a single `EVENT_DUPLICATE` audit line — the original effects are never
+repeated, but a retry storm stays visible to an auditor.
+
+**Known limitation.** A process crash between the successful claim and the
+state update leaves the event at `processing_status: received` and it will not
+be retried, because a redelivery now loses the claim. This is at-most-once
+processing after a successful claim. A sweeper for stuck `received` events is
+deferred; the trade was made knowingly, in favour of never double-charging.
+
+### 6.2 Out-of-order events
+
+Strategy chosen: **compare `occurred_at` against `last_state_change_at`**.
+
+A lifecycle event whose logical time is strictly older than the last accepted
+state change is refused with `STALE_EVENT`. It is still persisted and audited,
+so nothing is silently dropped — we simply decline to let receive order
+overwrite logical order.
+
+Equal timestamps are *not* stale. Treating simultaneity as staleness would
+arbitrarily discard one of two events sharing a millisecond.
+
+`last_state_change_at` is `None` until the first transition. Creating a
+subscription *sets* its state rather than *changing* it, so there is nothing
+for the first event to contradict — seeding the field from `created_at` made
+every historical replay fail (INC-007), which would have broken M2's simulator.
+
+Why not full event-sourced replay (recompute state from the whole log)? It is
+the more general answer, and it is more machinery than this milestone needs: it
+requires a deterministic fold, replay on every write, and a compaction story.
+The comparison above is one field and one branch, and it is correct for the
+lifecycle actually modelled. If M2 shows it is insufficient, replay remains
+available — the full event log is already persisted.
+
+**Invoices are attributed by time, not by current state.** An invoice event
+resolves to whichever halt episode's window contains its `occurred_at`, so an
+invoice raised during a halt but delivered after reactivation still lands on
+the right episode. That lineage is precisely what M2's backlog reconstruction
+reads.
+
+### 6.3 State transitions
+
+| From | Event | Result |
+|---|---|---|
+| ACTIVE | `subscription.pending` | → PENDING |
+| PENDING | `subscription.halted` | → HALTED, opens halt episode |
+| PENDING | `subscription.activated` | → ACTIVE (recovered before halt; no episode) |
+| HALTED | `subscription.activated` | → ACTIVE, closes halt episode |
+| any | event asserting the current state | no-op, accepted |
+| ACTIVE | `subscription.halted` | **rejected** `ILLEGAL_TRANSITION` |
+| HALTED | `subscription.pending` | **rejected** `ILLEGAL_TRANSITION` |
+
+`ACTIVE → HALTED` is refused deliberately. In the modelled lifecycle a halt
+follows failed retries, so it must pass through PENDING; accepting a direct
+halt would let a dropped `subscription.pending` event silently produce a halt
+episode with no recorded cause. `HALTED → PENDING` is refused because leaving a
+halt is a reactivation — a quiet slide back to PENDING would close an episode
+with no reactivation to attribute it to.
+
+Re-asserting the current state is a no-op rather than an error: at-least-once
+delivery makes it routine, and failing it would turn normal webhook behaviour
+into alert noise.
+
+The table lives in `app/domain/state_machine.py` as a pure function — no I/O,
+no clock, no database — so it is checkable by eye and testable without Mongo.
+
+Writes use **compare-and-swap**: the update filter pins the status we believe
+the subscription is in, so a concurrent writer that already moved it causes the
+update to match nothing, reported as `CONCURRENT_MODIFICATION` rather than
+overwriting someone else's transition.
+
+### 6.4 Halt episodes
+
+```jsonc
+"halt_episodes": [
+  { "episode_id": "he_1", "halted_at": "...", "reactivated_at": "...", "invoice_ids": ["inv_feb", "inv_mar"] }
+]
+```
+
+Opened on entry to HALTED, closed on reactivation, never overwritten. At most
+one episode is open at a time — guaranteed by the state machine, since the only
+edge that opens one is `PENDING → HALTED` and CAS admits exactly one winner.
+
+`ACTIVE → HALTED → ACTIVE → HALTED → ACTIVE` therefore produces two closed
+episodes with distinct invoice sets. Under the scalar `halted_at` /
+`reactivated_at` design the second halt would have overwritten the first and
+its invoices would have lost their attribution.
+
+### 6.5 Invoice lineage
+
+`halt_episode_id` is authoritative; `generated_during_halt` is a derived
+convenience field kept in sync with it and never read as the source of truth.
+
+Two unique indexes protect the ledger: `invoice_id` catches replays, and the
+compound `(subscription_id, billing_cycle)` makes double-billing a period
+structurally impossible. The two are reported separately —
+`DUPLICATE_INVOICE` versus `DUPLICATE_BILLING_CYCLE` — because one is a
+harmless retry and the other means the platform believes it is billing the same
+month twice.
+
+### 6.6 Audit sequencing
+
+Ordering comes from a per-subscription `seq`, not from `ts`. A single ingestion
+writes four to six entries inside the same millisecond, and BSON datetimes
+cannot separate them.
+
+`seq` is allocated with an atomic single-document `$inc` on the subscription,
+so concurrent writers cannot receive the same number. The unique index on
+`(subscription_id, seq)` is the backstop. The audit repository exposes only
+`append` and `list` — there is deliberately no update or delete.
+
+### 6.7 Payment events in M1
+
+`payment.failed` and `payment.succeeded` are recorded as ledger facts and do
+**not** move subscription status; only the platform's own lifecycle events do
+that, and inferring a halt from a failed payment would duplicate that
+authority. `payment.succeeded` carrying an `invoice_id` settles that invoice.
+
+### 6.8 What M1 deliberately does not do
+
+No backlog aggregation, no recovery cases, no policy evaluation, no simulator,
+no model, no LLM, no agent loop. M1 is the ledger those things will read.
