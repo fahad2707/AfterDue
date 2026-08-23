@@ -25,6 +25,8 @@ async def create_customer(body: CustomerIn, customers: Customers):
             run_id=body.run_id,
             name=body.name,
             risk_flags=body.risk_flags,
+            customer_opted_out=body.customer_opted_out,
+            has_active_dispute=body.has_active_dispute,
             created_at=utcnow(),
         )
     )
@@ -56,6 +58,9 @@ async def create_subscription(
         plan_amount_paise=body.plan_amount_paise,
         currency=body.currency,
         card_type=body.card_type,
+        mandate_max_amount_paise=body.mandate_max_amount_paise
+        if body.mandate_max_amount_paise is not None
+        else body.plan_amount_paise,
         halt_episodes=[],
         # Left unset: creation is not a state change, and seeding it from
         # `created_at` made every historical event look stale (INC-007).

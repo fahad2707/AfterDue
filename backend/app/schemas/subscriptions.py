@@ -13,6 +13,8 @@ class CustomerIn(BaseModel):
     run_id: str
     name: str
     risk_flags: list[str] = Field(default_factory=list)
+    customer_opted_out: bool = False
+    has_active_dispute: bool = False
 
 
 class SubscriptionIn(BaseModel):
@@ -33,6 +35,7 @@ class SubscriptionIn(BaseModel):
     card_type: CardType
     currency: str = "INR"
     status: SubscriptionStatus = SubscriptionStatus.ACTIVE
+    mandate_max_amount_paise: Paise | None = None
     created_at: datetime | None = None
 
 
@@ -51,6 +54,7 @@ class SubscriptionOut(BaseModel):
     plan_amount_paise: int
     currency: str
     card_type: CardType
+    mandate_max_amount_paise: int
     halt_episodes: list[HaltEpisodeOut]
     last_state_change_at: datetime | None
     created_at: datetime

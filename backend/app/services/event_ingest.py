@@ -35,6 +35,7 @@ from app.repositories.invoices import InsertOutcome, InvoiceRepository
 from app.repositories.subscriptions import SubscriptionRepository
 from app.schemas.events import EventIn, InvoiceCreatedPayload, PaymentPayload
 from app.services.audit import AuditTrail
+from app.services.recovery_window import RecoveryWindowService
 
 log = get_logger(__name__)
 
@@ -78,11 +79,13 @@ class EventIngestService:
         events: EventRepository,
         invoices: InvoiceRepository,
         audit: AuditRepository,
+        recovery: RecoveryWindowService | None = None,
     ) -> None:
         self.subscriptions = subscriptions
         self.events = events
         self.invoices = invoices
         self.trail = AuditTrail(subscriptions, audit)
+        self.recovery = recovery
 
     async def ingest(self, event_in: EventIn) -> IngestResult:
         now = utcnow()
@@ -274,7 +277,14 @@ class EventIngestService:
             )
 
         if outcome.closes_halt_episode:
-            closed = updated.halt_episodes[-1] if updated.halt_episodes else None
+            closed = next(
+                (
+                    e
+                    for e in updated.halt_episodes
+                    if e.reactivated_at == event.occurred_at
+                ),
+                updated.halt_episodes[-1] if updated.halt_episodes else None,
+            )
             await self.trail.record(
                 run_id=run_id,
                 subscription_id=updated.subscription_id,
@@ -285,6 +295,18 @@ class EventIngestService:
                     "invoice_count": len(closed.invoice_ids) if closed else 0,
                 },
             )
+            if self.recovery is not None and closed is not None:
+                # The transition is already committed. A failure here is
+                # repaired by reconciliation — it must not fail ingestion.
+                try:
+                    await self.recovery.handle_reactivation(updated, closed)
+                except Exception:
+                    log.exception(
+                        "recovery_window_failed",
+                        event_id=event.event_id,
+                        subscription_id=updated.subscription_id,
+                        halt_episode_id=closed.episode_id,
+                    )
 
         return IngestResult(event.event_id, Outcome.PROCESSED, ReasonCode.OK, updated)
 

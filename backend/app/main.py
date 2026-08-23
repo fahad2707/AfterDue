@@ -9,7 +9,7 @@ from app.config import get_settings
 from app.database import mongo
 from app.logging import configure_logging, get_logger
 from app.repositories.indexes import ensure_indexes
-from app.routes import events, health, ledger, meta
+from app.routes import events, health, ledger, meta, policy, recovery
 
 settings = get_settings()
 configure_logging(level=settings.log_level, json_output=settings.app_env != "local")
@@ -76,3 +76,5 @@ app.include_router(health.router)
 app.include_router(meta.router)
 app.include_router(events.router)
 app.include_router(ledger.router)
+app.include_router(policy.router)
+app.include_router(recovery.router)

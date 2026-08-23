@@ -1,0 +1,67 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, computed_field
+
+from app.domain.enums import CardType, RecoveryCaseStatus
+from app.domain.money import format_paise
+from app.domain.policy import PolicyContext, PolicyDecision
+from app.schemas.subscriptions import InvoiceOut
+
+
+class RecoveryCaseOut(BaseModel):
+    case_id: str
+    run_id: str
+    subscription_id: str
+    customer_id: str
+    halt_episode_id: str
+    status: RecoveryCaseStatus
+    invoice_ids: list[str]
+    invoice_count: int
+    backlog_amount_paise: int
+    oldest_invoice_at: datetime | None
+    newest_invoice_at: datetime | None
+    halted_at: datetime
+    reactivated_at: datetime
+    halt_duration_days: int
+    card_type: CardType
+    risk_flags: list[str]
+    policy_version: str
+    attempt_count: int
+    last_contact_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    @computed_field
+    @property
+    def backlog_amount_display(self) -> str:
+        return format_paise(self.backlog_amount_paise)
+
+
+class RecoveryCaseDetail(BaseModel):
+    case: RecoveryCaseOut
+    invoices: list[InvoiceOut]
+    policy: PolicyDecision
+
+
+class PolicyConfigOut(BaseModel):
+    policy_version: str
+    max_attempts: int
+    contact_cooldown_hours: int
+    actions: list[str]
+    rules: list[dict]
+    reason_codes: list[str]
+    provenance_values: list[str]
+    synthetic: bool = True
+
+
+class ReconcileReportOut(BaseModel):
+    examined_episodes: int
+    created_case_ids: list[str]
+    already_present: int
+    skipped_no_backlog: int
+
+
+class PolicyEvaluateIn(PolicyContext):
+    """Dry-run input. Same shape as PolicyContext; no persistence."""
+
+    model_config = ConfigDict(extra="forbid")
