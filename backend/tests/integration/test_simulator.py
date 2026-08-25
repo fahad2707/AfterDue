@@ -156,8 +156,15 @@ def test_only_reactivated_backlog_creates_cases(client):
     ).json()
     assert len(cases) == summary["recovery_case_count"]
     assert len(cases) <= summary["reactivated_count"] * 2  # second halt possible
-    assert all(c["backlog_amount_paise"] > 0 for c in cases)
-    assert all(isinstance(c["backlog_amount_paise"], int) for c in cases)
+    assert all(c["backlog_amount_paise"] == c["collectible_amount_paise"] for c in cases)
+    for case in cases:
+        assert isinstance(case["backlog_amount_paise"], int)
+        if case["status"] == "review_required":
+            assert case["backlog_amount_paise"] == 0
+            assert case["review_required_amount_paise"] > 0
+            assert case.get("model_analysis") in (None, {})
+        else:
+            assert case["backlog_amount_paise"] > 0
 
 
 def test_simulator_run_baselines_share_world_and_respect_budget_and_policy(client):
@@ -213,6 +220,7 @@ def test_simulator_run_baselines_share_world_and_respect_budget_and_policy(clien
         "restricted",
         "escalation_required",
         "stopped",
+        "review_required",
     }
 
 
@@ -240,6 +248,6 @@ def test_m3_e2e_hundred_subscribers(client):
     for _name, metrics in results.items():
         assert metrics["intervention_budget"] == 25
         assert metrics["interventions_used"] <= 25
-        assert metrics["eligible_cases"] == summary["recovery_case_count"]
+        assert metrics["eligible_cases"] == summary["collectible_recovery_case_count"]
         assert metrics["synthetic"] is True
         assert isinstance(metrics["revenue_recovered_paise"], int)

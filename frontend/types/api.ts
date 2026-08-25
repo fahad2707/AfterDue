@@ -40,6 +40,9 @@ export type SimulationConfig = {
   seed: number;
   contact_cooldown_hours?: number;
   max_attempts?: number;
+  suspend_on_halt_rate?: number;
+  continue_during_grace_rate?: number;
+  grace_cycles?: number;
 };
 
 export type WorldSummary = {
@@ -48,7 +51,13 @@ export type WorldSummary = {
   halted_never_returned_count: number;
   reactivated_count: number;
   recovery_case_count: number;
+  collectible_recovery_case_count?: number;
+  review_required_case_count?: number;
   historical_invoice_count: number;
+  historical_unpaid_amount_paise?: number;
+  collectible_amount_paise?: number;
+  review_required_amount_paise?: number;
+  not_collectible_amount_paise?: number;
   revenue_at_risk_paise: number;
   domestic_card_count: number;
   international_card_count: number;
@@ -95,6 +104,12 @@ export type DashboardSummary = {
   synthetic: boolean;
   status: string;
   revenue_at_risk_paise: number;
+  historical_unpaid_amount_paise?: number;
+  collectible_amount_paise?: number;
+  review_required_amount_paise?: number;
+  not_collectible_amount_paise?: number;
+  collectible_recovery_case_count?: number;
+  review_required_case_count?: number;
   recovery_case_count: number;
   reactivated_count: number;
   intervention_budget: number;
@@ -152,9 +167,17 @@ export type RecoveryCase = {
   synthetic_customer_key: string | null;
   halt_episode_id: string;
   status: string;
+  collectibility_status?: string;
   invoice_ids: string[];
   invoice_count: number;
   backlog_amount_paise: number;
+  historical_unpaid_amount_paise?: number;
+  collectible_amount_paise?: number;
+  review_required_amount_paise?: number;
+  not_collectible_amount_paise?: number;
+  collectible_invoice_ids?: string[];
+  review_required_invoice_ids?: string[];
+  not_collectible_invoice_ids?: string[];
   oldest_invoice_at: string | null;
   newest_invoice_at: string | null;
   halted_at: string;
@@ -195,6 +218,11 @@ export type Invoice = {
   status: string;
   halt_episode_id: string | null;
   generated_during_halt: boolean;
+  service_delivery_status?: string;
+  waived?: boolean;
+  merchant_marked_non_collectible?: boolean;
+  collectibility_status?: string;
+  collectibility_reason_codes?: string[];
   created_at: string;
 };
 

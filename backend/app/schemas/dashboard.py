@@ -7,6 +7,12 @@ class DashboardSummary(BaseModel):
     synthetic: bool = True
     status: str
     revenue_at_risk_paise: int
+    historical_unpaid_amount_paise: int = 0
+    collectible_amount_paise: int = 0
+    review_required_amount_paise: int = 0
+    not_collectible_amount_paise: int = 0
+    collectible_recovery_case_count: int = 0
+    review_required_case_count: int = 0
     recovery_case_count: int
     reactivated_count: int
     intervention_budget: int

@@ -69,7 +69,9 @@ than buried in a README.
 The reproducible economic decision path is entirely deterministic:
 
 ```
-Recovery Case → Feature Builder → Per-action Recovery/Uplift Model
+Historical unpaid reconstruction → Collectibility gate
+→ Recovery Case (collectible amount only) → Feature Builder
+→ Per-action Recovery/Uplift Model
 → Incremental Expected Value → Policy Engine → Action Ranking
 → Validator → Simulated Execution → Outcome → Metrics
 ```
@@ -125,6 +127,36 @@ policy → validator → executor re-check defence in depth ·
 Next.js server-side proxy with server-only API URL · structured logs ·
 seeded simulation · paired counterfactual oracle ·
 vertical demo spine before advanced ML · real incident logging.
+
+### D9 — Invoice existence is not collectibility
+
+A subscription platform may generate invoices while a subscription is halted
+even if service was suspended. Unpaid halt-period invoice lineage is
+**historical unpaid backlog**, not proof of a valid receivable.
+
+```
+HALTED → ACTIVE
+        ↓
+historical invoice lineage (unpaid, matching halt episode)
+        ↓
+COLLECTIBILITY / SERVICE-ENTITLEMENT GATE
+        ↓
+collectible receivables only
+        ↓
+Policy → ML economics → Intervention budget → Bounded agent
+```
+
+UNKNOWN service delivery fails closed to `REVIEW_REQUIRED`. It is never
+treated as collectible. `PARTIALLY_DELIVERED` is also `REVIEW_REQUIRED` in
+v1 (no proportional split).
+
+Collectibility answers “is this receivable valid?” Policy answers “given a
+valid receivable, what actions are allowed right now?” Dispute and opt-out
+remain policy. ML never decides collectibility.
+
+`backlog_amount_paise` on a recovery case is the collectible eligible
+amount only, and must equal `collectible_amount_paise`. Strategies (Naive,
+Rule-based, RECLAIM) share the same post-gate universe.
 
 ---
 

@@ -25,7 +25,9 @@ from app.ml.predict import predict_probability
 from app.ml.registry import load_artifact, save_artifact
 from app.ml.strategy import ReclaimStrategy
 from app.ml.train import group_split, make_pipeline, train_and_select
+from app.simulator.config import SimulationConfig
 from app.simulator.costs import cost_of
+from app.simulator.population import collectible_cycle_count, draw_population
 from app.simulator.strategies import CaseAction, NaiveStrategy, RuleBasedStrategy
 from tests.unit.test_simulator import _view
 
@@ -319,3 +321,15 @@ def test_canonical_three_strategy_experiment_is_fair():
     assert reclaim == ReclaimStrategy(result["pipeline"], result["metadata"]).choose_actions(
         views, budget
     )
+
+
+def test_training_rows_are_post_collectibility_and_omit_delivery_features():
+    assert "service_delivery_status" not in FEATURE_NAMES
+    rows = generate_training_rows(13, 80)
+    assert all(row.view.backlog_amount_paise > 0 for row in rows)
+    assert all(row.view.invoice_count >= 1 for row in rows)
+    people = draw_population(SimulationConfig(subscriber_count=40, seed=13))
+    for person in people:
+        assert collectible_cycle_count(person.first_halt_delivery) == sum(
+            1 for status in person.first_halt_delivery if status.value == "delivered"
+        )

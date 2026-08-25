@@ -63,6 +63,20 @@ async def dashboard_summary(
         synthetic=True,
         status=record.status.value if hasattr(record.status, "value") else str(record.status),
         revenue_at_risk_paise=int(world.get("revenue_at_risk_paise") or 0),
+        historical_unpaid_amount_paise=int(
+            world.get("historical_unpaid_amount_paise") or 0
+        ),
+        collectible_amount_paise=int(world.get("collectible_amount_paise") or 0),
+        review_required_amount_paise=int(
+            world.get("review_required_amount_paise") or 0
+        ),
+        not_collectible_amount_paise=int(
+            world.get("not_collectible_amount_paise") or 0
+        ),
+        collectible_recovery_case_count=int(
+            world.get("collectible_recovery_case_count") or 0
+        ),
+        review_required_case_count=int(world.get("review_required_case_count") or 0),
         recovery_case_count=int(world.get("recovery_case_count") or 0),
         reactivated_count=int(world.get("reactivated_count") or 0),
         intervention_budget=int(config.get("intervention_budget") or 0),

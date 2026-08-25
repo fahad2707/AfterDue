@@ -8,9 +8,11 @@ Nothing here is reconstructed or invented for the submission.
 1. **INC-007** — best 2AM candidate. A fixture stamped `last_state_change_at`
    on create, so every historical replay looked stale. That would have
    broken M2’s simulator, not just one test.
-2. **INC-010** — same-seed worlds diverged because the oracle hashed
+2. **INC-012** — invoice existence was treated as collectibility. The code
+   worked; the assumption didn’t.
+3. **INC-010** — same-seed worlds diverged because the oracle hashed
    `case_id` (which embeds `run_id`).
-3. **INC-011** — opt-out TOCTOU returned `POLICY_BLOCKED` because execute
+4. **INC-011** — opt-out TOCTOU returned `POLICY_BLOCKED` because execute
    re-scored the model after the flag change.
 
 ---
@@ -319,3 +321,36 @@ cleared. The validator applies the real flags and maps
 **Prevention.** `test_toctou_opt_out_blocks_execution` plans a payment link,
 mutates opt-out in Mongo, executes, and asserts `CUSTOMER_OPTED_OUT`, no
 oracle row, and no budget claim.
+
+---
+
+## INC-012 — Invoice existence was treated as collectibility
+
+**Milestone:** collectibility gate
+**Severity:** material business-model flaw; caught in design review before
+treating a suspend-on-halt merchant as recoverable revenue
+
+**Symptom.** A merchant that suspends service during halt could still
+generate halt-period invoices. RECLAIM treated those unpaid invoices as
+recoverable revenue after reactivation.
+
+**Root cause.** The backlog builder established invoice lineage and unpaid
+status. The architecture had no service-entitlement / collectibility
+boundary. Invoice existence was incorrectly treated as proof of
+collectibility.
+
+**Impact.** The agent could economically optimize recovery of invoices for
+periods in which service was not actually delivered.
+
+**Fix.** Inserted a deterministic collectibility validation step between
+historical unpaid reconstruction and recovery-case economic eligibility.
+UNKNOWN service delivery fails closed to `REVIEW_REQUIRED`.
+`backlog_amount_paise` is now collectible eligible receivable only.
+
+The code worked. The assumption didn't.
+
+**Prevention.** Suspended / delivered / mixed entitlement tests, including a
+mandatory May/June/July mixed case (₹5,000 collectible / excluded / review).
+Reconciliation uses the same `RecoveryWindowService` path. All three
+strategies share the post-gate universe.
+

@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.domain.enums import CardType, RecoveryCaseStatus
+from app.domain.enums import CardType, CollectibilityStatus, RecoveryCaseStatus
 from app.domain.money import format_paise
 from app.domain.policy import PolicyContext, PolicyDecision
 from app.schemas.subscriptions import HaltEpisodeOut, InvoiceOut
@@ -17,9 +17,17 @@ class RecoveryCaseOut(BaseModel):
     synthetic_customer_key: str | None = None
     halt_episode_id: str
     status: RecoveryCaseStatus
+    collectibility_status: CollectibilityStatus = CollectibilityStatus.COLLECTIBLE
     invoice_ids: list[str]
     invoice_count: int
     backlog_amount_paise: int
+    historical_unpaid_amount_paise: int = 0
+    collectible_amount_paise: int = 0
+    review_required_amount_paise: int = 0
+    not_collectible_amount_paise: int = 0
+    collectible_invoice_ids: list[str] = Field(default_factory=list)
+    review_required_invoice_ids: list[str] = Field(default_factory=list)
+    not_collectible_invoice_ids: list[str] = Field(default_factory=list)
     oldest_invoice_at: datetime | None
     newest_invoice_at: datetime | None
     halted_at: datetime

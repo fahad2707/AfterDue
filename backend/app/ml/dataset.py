@@ -12,7 +12,7 @@ from app.policy import evaluate_v1
 from app.simulator.config import SimulationConfig
 from app.simulator.identity import synthetic_case_key, synthetic_customer_key
 from app.simulator.oracle import OracleCase, OutcomeOracle
-from app.simulator.population import Fate, SubscriberPlan, draw_population
+from app.simulator.population import Fate, SubscriberPlan, collectible_cycle_count, draw_population
 from app.simulator.strategies import CaseView
 from app.simulator.world import DECISION_NOW, ORIGIN
 
@@ -53,14 +53,18 @@ def _observation(plan: SubscriberPlan, halt_ordinal: int) -> CaseView | None:
         halt_at = _at(first_halt, days=30 * plan.missed_cycles + 50)
         cycles = max(1, plan.missed_cycles // 2)
     reactivated = _at(halt_at, days=30 * cycles + 12)
+    delivery = plan.first_halt_delivery if halt_ordinal == 1 else plan.second_halt_delivery
+    collectible_cycles = collectible_cycle_count(delivery)
+    if collectible_cycles == 0:
+        return None
     now = DECISION_NOW
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     return CaseView(
         case_id=f"train_{synthetic_case_key(plan.index, halt_ordinal)}",
         synthetic_case_key=synthetic_case_key(plan.index, halt_ordinal),
-        backlog_amount_paise=plan.plan_amount_paise * cycles,
-        invoice_count=cycles,
+        backlog_amount_paise=plan.plan_amount_paise * collectible_cycles,
+        invoice_count=collectible_cycles,
         halt_duration_days=max(0, (reactivated - halt_at).days),
         days_since_reactivation=max(0, (now - reactivated).days),
         card_type=plan.card_type.value,

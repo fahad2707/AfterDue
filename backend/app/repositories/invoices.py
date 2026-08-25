@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pymongo.errors import DuplicateKeyError
 
-from app.domain.enums import InvoiceStatus
+from app.domain.enums import CollectibilityReasonCode, CollectibilityStatus, InvoiceStatus
 from app.models.documents import Invoice
 from app.repositories.base import Repository, strip_id
 
@@ -60,3 +60,24 @@ class InvoiceRepository(Repository):
             [("period_start", 1)]
         )
         return [Invoice.model_validate(strip_id(d)) async for d in cursor]
+
+    async def list_for_run(self, run_id: str) -> list[Invoice]:
+        cursor = self.col.find({"run_id": run_id}).sort([("period_start", 1)])
+        return [Invoice.model_validate(strip_id(d)) async for d in cursor]
+
+    async def set_collectibility(
+        self,
+        invoice_id: str,
+        *,
+        status: CollectibilityStatus,
+        reason_codes: list[CollectibilityReasonCode],
+    ) -> None:
+        await self.col.update_one(
+            {"invoice_id": invoice_id},
+            {
+                "$set": {
+                    "collectibility_status": status.value,
+                    "collectibility_reason_codes": [c.value for c in reason_codes],
+                }
+            },
+        )

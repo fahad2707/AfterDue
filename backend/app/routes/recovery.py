@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from app.agent.service import evaluate_case_policy
 from app.config import get_settings
-from app.domain.enums import Actor, AuditEventType, RecoveryCaseStatus
+from app.domain.enums import ActionType, Actor, AuditEventType, RecoveryCaseStatus
 from app.domain.policy import PolicyContext, PolicyDecision
 from app.domain.time import utcnow
 from app.llm.explanation import CaseExplanationService
@@ -31,7 +31,9 @@ from app.schemas.subscriptions import AuditLogOut, HaltEpisodeOut, InvoiceOut
 from app.services.audit import AuditTrail
 
 
-def _policy_status(decision: PolicyDecision) -> str:
+def _policy_status(decision: PolicyDecision, case: RecoveryCase | None = None) -> str:
+    if case is not None and case.status is RecoveryCaseStatus.REVIEW_REQUIRED:
+        return "review_required"
     if decision.stop:
         return "stopped"
     if decision.requires_escalation:
@@ -41,9 +43,27 @@ def _policy_status(decision: PolicyDecision) -> str:
     return "eligible"
 
 
+def _review_policy(case: RecoveryCase) -> PolicyDecision:
+    """Collectibility is not a policy reason. Block automated recovery."""
+    return PolicyDecision(
+        policy_version=get_settings().policy_version,
+        allowed_actions=[ActionType.NO_ACTION],
+        blocked_actions=[
+            ActionType.SEND_PAYMENT_LINK,
+            ActionType.ATTEMPT_MANUAL_CHARGE,
+            ActionType.ESCALATE_TO_MERCHANT,
+        ],
+        reason_codes=[],
+        requires_escalation=False,
+        stop=True,
+    )
+
+
 def _decision(
     case: RecoveryCase, customer: Customer | None, subscription: Subscription
 ) -> PolicyDecision:
+    if case.status is RecoveryCaseStatus.REVIEW_REQUIRED:
+        return _review_policy(case)
     settings = get_settings()
     return evaluate_v1(
         PolicyContext(
@@ -76,12 +96,16 @@ def _case_out(
         _decision(case, customer, subscription) if subscription is not None else None
     )
     analysis = None
-    if customer is not None and subscription is not None:
+    if (
+        customer is not None
+        and subscription is not None
+        and case.is_strategy_eligible()
+    ):
         analysis = try_analyze_view(build_case_view(case, customer, subscription))
     return RecoveryCaseOut(
         **case.model_dump(),
         customer_name=customer.name if customer else case.customer_id,
-        policy_status=_policy_status(decision) if decision else "eligible",
+        policy_status=_policy_status(decision, case) if decision else "eligible",
         allowed_actions=[a.value for a in decision.allowed_actions] if decision else [],
         blocked_actions=[a.value for a in decision.blocked_actions] if decision else [],
         requires_escalation=decision.requires_escalation if decision else False,
@@ -155,7 +179,7 @@ async def get_recovery_case(
     if case is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
 
-    invoice_docs = await invoices.list_for_ids(case.invoice_ids)
+    invoice_docs = await invoices.list_for_ids(case.evaluated_invoice_ids())
     subscription = await subscriptions.get(case.subscription_id)
     customer = await customers.get(case.customer_id)
 
@@ -191,8 +215,13 @@ async def get_recovery_case_analysis(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown recovery case")
     subscription = await subscriptions.get(case.subscription_id)
     customer = await customers.get(case.customer_id)
-    if subscription is None or customer is None:
+    if customer is None or subscription is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "case entities are missing")
+    if not case.is_strategy_eligible():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Collectibility has not been established; this case is not scored.",
+        )
     analysis = try_analyze_view(build_case_view(case, customer, subscription))
     if analysis is None:
         raise HTTPException(

@@ -73,13 +73,14 @@ def test_plan_and_deterministic_explanation(client):
         json={"question": "Why was this case created?"},
     )
     assert asked.status_code == 200
-    assert "unpaid" in asked.json()["answer"].lower()
+    answer = asked.json()["answer"].lower()
+    assert "eligible" in answer or "collectible" in answer or "unpaid" in answer
 
 
 def test_toctou_opt_out_blocks_execution(client, mongo_uri, test_db_name):
     case = _open_case(
         client,
-        card_type="international",
+        card_type="domestic",
         customer_id="cust_toctou",
         sub_id="sub_toctou",
     )

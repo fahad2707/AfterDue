@@ -84,26 +84,48 @@ def send_invoice(
     occurred_at: str,
     amount: int = PLAN_PAISE,
     subscription_id: str = SUBSCRIPTION_ID,
+    service_delivery_status: str = "delivered",
 ):
     return send(
         client,
         event_id,
         "invoice.created",
         occurred_at,
-        invoice_payload(invoice_id, cycle, months=months, amount=amount),
+        invoice_payload(
+            invoice_id,
+            cycle,
+            months=months,
+            amount=amount,
+            service_delivery_status=service_delivery_status,
+        ),
         subscription_id=subscription_id,
     )
 
 
-def invoice_payload(invoice_id: str, cycle: str, *, months: int, amount: int = PLAN_PAISE):
+def invoice_payload(
+    invoice_id: str,
+    cycle: str,
+    *,
+    months: int,
+    amount: int = PLAN_PAISE,
+    service_delivery_status: str | None = "delivered",
+):
+    """Test helper. Default DELIVERED so existing recovery tests stay collectible.
+
+    Omit `service_delivery_status` (pass None) to exercise ingest fail-closed
+    UNKNOWN. The engine itself still defaults missing delivery to UNKNOWN.
+    """
     start = T0 + timedelta(days=30 * months)
-    return {
+    payload = {
         "invoice_id": invoice_id,
         "billing_cycle": cycle,
         "period_start": start.isoformat(),
         "period_end": (start + timedelta(days=30)).isoformat(),
         "amount_paise": amount,
     }
+    if service_delivery_status is not None:
+        payload["service_delivery_status"] = service_delivery_status
+    return payload
 
 
 def get_subscription(client, subscription_id: str = SUBSCRIPTION_ID):

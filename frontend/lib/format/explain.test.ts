@@ -10,7 +10,7 @@ describe("explainCase", () => {
       reasonCodes: ["DOMESTIC_CARD_MANUAL_CHARGE_UNSUPPORTED"],
       allowedActions: ["no_action", "send_payment_link"],
     });
-    expect(lines[0]).toContain("3 unpaid invoices");
+    expect(lines[0]).toContain("3 eligible invoices");
     expect(lines[0]).toContain("₹14,997");
     expect(lines[1]).toContain("domestic card");
   });

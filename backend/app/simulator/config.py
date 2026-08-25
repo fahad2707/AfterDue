@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.money import Paise
 
@@ -23,6 +23,19 @@ class SimulationConfig(BaseModel):
     seed: int = 42
     contact_cooldown_hours: int = Field(default=24, ge=0)
     max_attempts: int = Field(default=3, ge=1)
+    #: PRODUCT/SIMULATION ASSUMPTIONS — not empirical merchant frequencies.
+    #: Remainder after suspend + continue is MIXED_OR_UNKNOWN.
+    suspend_on_halt_rate: float = Field(default=0.30, ge=0.0, le=1.0)
+    continue_during_grace_rate: float = Field(default=0.40, ge=0.0, le=1.0)
+    grace_cycles: int = Field(default=6, ge=0, le=12)
+
+    @model_validator(mode="after")
+    def delivery_rates_fit(self):
+        if self.suspend_on_halt_rate + self.continue_during_grace_rate > 1.0:
+            raise ValueError(
+                "suspend_on_halt_rate + continue_during_grace_rate must be <= 1"
+            )
+        return self
 
 
 #: Discrete plan ladder in paise. Drawn, then clipped to the config range.

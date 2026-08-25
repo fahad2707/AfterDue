@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.domain.enums import EventType, ReasonCode
+from app.domain.enums import EventType, ReasonCode, ServiceDeliveryStatus
 from app.domain.money import Paise
 from app.schemas.subscriptions import SubscriptionOut
 
@@ -16,6 +16,10 @@ class InvoiceCreatedPayload(BaseModel):
     period_end: datetime
     amount_paise: Paise
     currency: str = "INR"
+    #: Missing delivery status is UNKNOWN. UNKNOWN fails closed at the gate.
+    service_delivery_status: ServiceDeliveryStatus = ServiceDeliveryStatus.UNKNOWN
+    waived: bool = False
+    merchant_marked_non_collectible: bool = False
 
 
 class PaymentPayload(BaseModel):

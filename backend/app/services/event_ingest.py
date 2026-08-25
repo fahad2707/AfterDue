@@ -341,6 +341,9 @@ class EventIngestService:
             status=InvoiceStatus.ISSUED_UNPAID,
             halt_episode_id=episode.episode_id if episode else None,
             generated_during_halt=episode is not None,
+            service_delivery_status=payload.service_delivery_status,
+            waived=payload.waived,
+            merchant_marked_non_collectible=payload.merchant_marked_non_collectible,
             created_at=event.occurred_at,
         )
 
@@ -375,6 +378,7 @@ class EventIngestService:
                 "amount_paise": invoice.amount_paise,
                 "halt_episode_id": invoice.halt_episode_id,
                 "generated_during_halt": invoice.generated_during_halt,
+                "service_delivery_status": invoice.service_delivery_status.value,
             },
         )
 

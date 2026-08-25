@@ -20,6 +20,10 @@ def explanation_facts(
     return {
         "backlog_amount_paise": case.backlog_amount_paise,
         "backlog_display": format_paise(case.backlog_amount_paise),
+        "collectible_amount_paise": case.collectible_amount_paise,
+        "historical_unpaid_amount_paise": case.historical_unpaid_amount_paise,
+        "review_required_amount_paise": case.review_required_amount_paise,
+        "not_collectible_amount_paise": case.not_collectible_amount_paise,
         "invoice_count": case.invoice_count,
         "halt_duration_days": case.halt_duration_days,
         "reactivated": True,

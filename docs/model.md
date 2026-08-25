@@ -49,9 +49,18 @@ Training and inference use one builder: `app/ml/features.py`.
 | action | categorical |
 
 Hidden `latent_payment_intent`, oracle outcomes, counterfactuals, and
-strategy names are not features. A schema hash (`sha256` of
-`v1|{feature names}`) is stored on the artifact. Inference refuses to
-predict if the current hash differs.
+strategy names are not features. **Service delivery / collectibility is
+not a feature.** Entitlement is a deterministic upstream gate; the model
+only sees cases that already passed it. `backlog_amount_paise` and
+`invoice_count` are collectible eligible values.
+
+A schema hash (`sha256` of `v1|{feature names}`) is stored on the
+artifact. Inference refuses to predict if the current hash differs.
+
+The committed artifact was retrained after the collectibility gate because
+the eligible case universe and backlog semantics changed, not to chase a
+better benchmark. Methodology (randomized actions, grouped split, LR vs
+HGB, Brier selection) is unchanged.
 
 ## Randomized action assignment
 

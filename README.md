@@ -32,11 +32,14 @@ real incident log — not reconstructed stories.
 
 When a subscription goes `ACTIVE → PENDING → HALTED`, the platform can
 keep generating invoices that nobody pays. If the customer later returns
-to `ACTIVE`, those invoices are still open.
+to `ACTIVE`, those invoices are still open — but they are not
+automatically collectible. Service may have been suspended for those
+periods.
 
-That `HALTED → ACTIVE` edge is the recovery window. The question is not
-“will they ever pay?” It is “is a specific action worth taking, given
-policy, and would they have paid anyway?”
+That `HALTED → ACTIVE` edge is the recovery window. RECLAIM reconstructs
+historical unpaid invoices, validates which ones are collectible
+receivables, then asks whether a specific action is worth taking on
+**eligible debt**, given policy, and whether they would have paid anyway.
 
 ## Why this matters
 
@@ -56,7 +59,9 @@ laboratory, not a production collection system.
 ```
 Detect halt → reactivation
   → reconstruct unpaid halt invoices (integer paise)
+  → collectibility / service-entitlement gate
   → estimate P(recovery | action) and P(recovery | no_action)
+      only over collectible eligible receivables
   → policy filter
   → rank by incremental expected value under a shared budget
   → validate again
@@ -74,7 +79,9 @@ Razorpay-like events
         ↓
 Ledger / state machine / halt episodes
         ↓
-Post-halt backlog (lineage, not date guesses)
+Post-halt unpaid reconstruction (lineage, not date guesses)
+        ↓
+Collectibility gate (UNKNOWN fails closed)
         ↓
 Feature builder  (no oracle, no latent, no strategy name)
         ↓
@@ -146,19 +153,30 @@ Details: [`docs/evaluation.md`](docs/evaluation.md).
 | **Rule-based** | Heuristic score (backlog + recency + historical success). Same actions and budget. |
 | **RECLAIM** | Model incremental EV, then the same policy and budget. |
 
-Canonical recorded comparison (`subscriber_count=100`, `seed=42`,
-`intervention_budget=25`; 32 cases; ₹741,880 at risk):
+Canonical comparison **after the collectibility gate** (`subscriber_count=100`,
+`seed=42`, `intervention_budget=25`):
+
+Funnel: historical unpaid ₹16,71,822 → collectible ₹8,42,415 · review
+₹5,67,448 · excluded ₹2,61,959. 23 collectible recovery cases (3 review-only
+cases are outside the strategy universe).
 
 | Strategy | Recovered | Incremental | Yield | Used |
 |---|---:|---:|---:|---:|
-| Naive | ₹237,957 | ₹94,976 | 32.07% | 25 |
-| Rule-based | ₹237,957 | ₹94,976 | 32.07% | 25 |
-| RECLAIM | ₹238,456 | ₹95,475 | 32.14% | 25 |
+| Naive | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+| Rule-based | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+| RECLAIM | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
 
-RECLAIM won by ₹499 incremental recovered revenue on that run. The
-simulator was not tuned to produce the win. Replay of the same `run_id`
-is identical. These are **synthetic** figures, not Razorpay production
-statistics. If a later seed loses, that result is reported.
+Yield denominator is collectible eligible receivable, not raw historical
+invoices. All three strategies saw the same 23 cases and the same
+₹8,42,415. On this seed they recovered the same amount. That is reported
+as-is; the simulator was not retuned.
+
+**Not comparable to M5/M6 rupee totals.** Those treated unpaid halt invoices
+as eligible receivables (32 cases, ₹7,41,880 at risk). The eligible universe
+changed.
+
+These are **synthetic** figures, not Razorpay production statistics. If a
+later seed loses, that result is reported.
 
 ## Running locally
 

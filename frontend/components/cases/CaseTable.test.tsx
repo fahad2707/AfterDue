@@ -46,7 +46,8 @@ const row: RecoveryCase = {
 describe("CaseTable", () => {
   it("uses short aligned headers and keeps money on one line", () => {
     const html = renderToStaticMarkup(<CaseTable cases={[row]} runId="run_1" />);
-    expect(html).toContain("Incr. recovery");
+    expect(html).toContain("Collectible");
+    expect(html).toContain("Historical unpaid");
     expect(html).toContain("₹4,999");
     expect(html).toContain("Manual charge blocked");
     expect(html).toContain("whitespace-nowrap");

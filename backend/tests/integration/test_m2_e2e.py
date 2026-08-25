@@ -47,6 +47,7 @@ def test_priya_domestic_three_invoice_backlog(client):
                 "period_start": start,
                 "period_end": end,
                 "amount_paise": PLAN_PAISE,
+                "service_delivery_status": "delivered",
             },
         )
         assert r.status_code == 200, r.text
@@ -69,6 +70,9 @@ def test_priya_domestic_three_invoice_backlog(client):
     case = cases[0]
     assert case["invoice_count"] == 3
     assert case["backlog_amount_paise"] == 1_499_700
+    assert case["collectible_amount_paise"] == 1_499_700
+    assert case["historical_unpaid_amount_paise"] == 1_499_700
+    assert case["backlog_amount_paise"] == case["collectible_amount_paise"]
     assert case["backlog_amount_display"] == "₹14,997.00"
     assert case["halt_duration_days"] == 90
     assert case["status"] == "open"
@@ -96,13 +100,16 @@ def test_priya_domestic_three_invoice_backlog(client):
         "HALT_EPISODE_CLOSED",
         "RECOVERY_WINDOW_OPENED",
         "BACKLOG_RECONSTRUCTED",
+        "COLLECTIBILITY_EVALUATED",
+        "RECOVERABLE_BACKLOG_CONFIRMED",
         "RECOVERY_CASE_CREATED",
         "POLICY_EVALUATED",
     ):
         assert required in kinds, kinds
     assert kinds.index("HALT_EPISODE_CLOSED") < kinds.index("RECOVERY_WINDOW_OPENED")
     assert kinds.index("RECOVERY_WINDOW_OPENED") < kinds.index("BACKLOG_RECONSTRUCTED")
-    assert kinds.index("BACKLOG_RECONSTRUCTED") < kinds.index("RECOVERY_CASE_CREATED")
+    assert kinds.index("BACKLOG_RECONSTRUCTED") < kinds.index("COLLECTIBILITY_EVALUATED")
+    assert kinds.index("COLLECTIBILITY_EVALUATED") < kinds.index("RECOVERY_CASE_CREATED")
     assert kinds.index("RECOVERY_CASE_CREATED") < kinds.index("POLICY_EVALUATED")
     assert "ACTION_EXECUTED" not in kinds
 
@@ -141,6 +148,7 @@ def test_international_card_allows_manual_charge(client):
             "period_start": "2026-03-01T00:00:00+00:00",
             "period_end": "2026-03-31T00:00:00+00:00",
             "amount_paise": PLAN_PAISE,
+            "service_delivery_status": "delivered",
         },
         subscription_id="sub_arjun",
     )

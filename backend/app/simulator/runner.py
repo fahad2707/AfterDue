@@ -84,7 +84,8 @@ class SimulationRunner:
             raise KeyError(run_id)
         config = record.config
         cases = await self.cases.list_by_run(run_id)
-        views, oracle_cases, policies = await self._views(config, cases)
+        eligible = [case for case in cases if case.is_strategy_eligible()]
+        views, oracle_cases, policies = await self._views(config, eligible)
         case_ids = tuple(v.case_id for v in views)
 
         oracle = OutcomeOracle(config.seed)
@@ -170,6 +171,10 @@ class SimulationRunner:
             if not case.synthetic_case_key or not case.synthetic_customer_key:
                 raise RuntimeError(
                     f"{case.case_id} is missing seed-stable synthetic identity"
+                )
+            if case.backlog_amount_paise != case.collectible_amount_paise:
+                raise RuntimeError(
+                    f"{case.case_id} violated backlog_amount_paise == collectible_amount_paise"
                 )
             views.append(
                 CaseView(

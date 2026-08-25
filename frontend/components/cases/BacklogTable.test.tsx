@@ -38,7 +38,7 @@ describe("BacklogTable", () => {
     ];
     const html = renderToStaticMarkup(<BacklogTable invoices={invoices} />);
     expect(html).toContain("2026-02");
-    expect(html).toContain("Generated during halt");
     expect(html).toContain("₹9,998");
+    expect(html).toContain("Historical unpaid");
   });
 });

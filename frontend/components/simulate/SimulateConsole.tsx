@@ -162,18 +162,28 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-ink-soft">Recovery cases</dt>
-              <dd className="font-mono text-lg">{formatCount(world.recovery_case_count)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-ink-soft">Revenue at risk</dt>
+              <dt className="text-xs text-ink-soft">Collectible cases</dt>
               <dd className="font-mono text-lg">
-                {formatPaiseINR(world.revenue_at_risk_paise)}
+                {formatCount(
+                  world.collectible_recovery_case_count ?? world.recovery_case_count,
+                )}
               </dd>
             </div>
             <div>
-              <dt className="text-xs text-ink-soft">Reactivated</dt>
-              <dd className="font-mono text-lg">{formatCount(world.reactivated_count)}</dd>
+              <dt className="text-xs text-ink-soft">Collectible receivables</dt>
+              <dd className="font-mono text-lg">
+                {formatPaiseINR(
+                  world.collectible_amount_paise ?? world.revenue_at_risk_paise,
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-soft">Historical unpaid</dt>
+              <dd className="font-mono text-lg">
+                {formatPaiseINR(
+                  world.historical_unpaid_amount_paise ?? world.revenue_at_risk_paise,
+                )}
+              </dd>
             </div>
           </dl>
           <p className="mt-4 text-xs text-ink-soft">

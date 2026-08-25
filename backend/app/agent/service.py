@@ -132,8 +132,10 @@ class RecoveryAgent:
     async def plan(self, case_id: str, *, prefer_llm: bool = False) -> dict:
         case, customer, subscription = await self._bundle(case_id)
         policy = evaluate_case_policy(case, customer, subscription)
-        view = build_case_view(case, customer, subscription)
-        analysis = try_analyze_view(view)
+        analysis = None
+        if case.is_strategy_eligible():
+            view = build_case_view(case, customer, subscription)
+            analysis = try_analyze_view(view)
         recommended = recommend_action(policy, analysis)
         facts = explanation_facts(case, policy, analysis)
         facts["recommended_action"] = recommended.value
@@ -205,8 +207,10 @@ class RecoveryAgent:
         proposal_policy = _policy(
             case, proposal_customer, subscription, ignore_contact_flags=True
         )
-        view = build_case_view(case, proposal_customer, subscription)
-        analysis = try_analyze_view(view)
+        analysis = None
+        if case.is_strategy_eligible():
+            view = build_case_view(case, proposal_customer, subscription)
+            analysis = try_analyze_view(view)
         recommended = recommend_action(proposal_policy, analysis)
         ev = (
             int(analysis.get("expected_incremental_recovery_paise") or 0)

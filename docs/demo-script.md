@@ -19,10 +19,13 @@ Generation through the real ingest path takes a couple of minutes.
 4. Wait for the run_id and world summary.
 5. Run baselines (Naive + Rule-based).
 6. Open Overview (`/`). Confirm the same `run` query parameter.
-7. Read revenue at risk, case count, budget, best baseline, yield.
-8. Open Recovery cases. Queue is sorted by expected incremental recovery
-   when a model analysis exists; otherwise by backlog.
-9. Open one case. Confirm lifecycle, halt invoices, policy provenance, audit.
+7. Read historical unpaid, collectible receivables, review required,
+   excluded, budget, recovered, yield (recovered / collectible eligible).
+8. Open Recovery cases. Queue is ranked by expected incremental recovery
+   when a model analysis exists; otherwise by collectible amount — not raw
+   historical unpaid.
+9. Open one case. Confirm lifecycle, per-invoice service delivery and
+   collectibility, Collectibility panel before Policy, then Model, audit.
 10. Open `/policy`. Confirm deterministic rules and documented vs assumed provenance.
 
 Every rupee figure on these pages comes from the selected simulation run.

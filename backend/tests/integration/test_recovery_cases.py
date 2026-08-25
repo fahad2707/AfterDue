@@ -10,6 +10,7 @@ from tests.integration.helpers import (
     SUBSCRIPTION_ID,
     at,
     get_audit,
+    get_invoices,
     seed,
     send,
     send_invoice,
@@ -49,6 +50,8 @@ def test_halted_to_active_with_backlog_creates_one_case(client):
     assert case["run_id"] == RUN_ID
     assert case["invoice_count"] == 2
     assert case["backlog_amount_paise"] == 2 * PLAN_PAISE
+    assert case["collectible_amount_paise"] == 2 * PLAN_PAISE
+    assert case["backlog_amount_paise"] == case["collectible_amount_paise"]
     assert isinstance(case["backlog_amount_paise"], int)
 
 
@@ -85,6 +88,7 @@ def test_paid_invoice_before_activation_is_excluded_from_case(client):
     assert len(cases) == 1
     assert cases[0]["invoice_ids"] == ["inv_2"]
     assert cases[0]["backlog_amount_paise"] == PLAN_PAISE
+    assert cases[0]["collectible_amount_paise"] == PLAN_PAISE
 
 
 def test_duplicate_activation_cannot_create_second_case(client):
@@ -176,3 +180,66 @@ def test_reconciliation_is_idempotent(client):
     assert second["created_case_ids"] == []
     assert second["already_present"] >= 1
     assert len(client.get("/api/recovery-cases", params={"run_id": RUN_ID}).json()) == 1
+
+
+def test_missing_delivery_status_fails_closed_to_review_required(client):
+    seed(client)
+    send(client, "e1", "subscription.pending", at(hours=1))
+    send(client, "e2", "subscription.halted", at(hours=2))
+    send_invoice(
+        client,
+        "i1",
+        "inv_1",
+        "2026-02",
+        months=1,
+        occurred_at=at(hours=3),
+        service_delivery_status=None,
+    )
+    send(client, "e3", "subscription.activated", at(hours=10))
+    invoices = get_invoices(client)
+    assert invoices[0]["service_delivery_status"] == "unknown"
+    cases = client.get("/api/recovery-cases", params={"run_id": RUN_ID}).json()
+    assert len(cases) == 1
+    case = cases[0]
+    assert case["status"] == "review_required"
+    assert case["collectibility_status"] == "review_required"
+    assert case["backlog_amount_paise"] == 0
+    assert case["collectible_amount_paise"] == 0
+    assert case["review_required_amount_paise"] == PLAN_PAISE
+    assert case["historical_unpaid_amount_paise"] == PLAN_PAISE
+    assert case["invoice_count"] == 0
+    assert case.get("model_analysis") in (None, {})
+
+
+def test_reconciliation_cannot_bypass_collectibility(client, monkeypatch):
+    from app.services import event_ingest as ingest_mod
+
+    seed(client)
+    send(client, "e1", "subscription.pending", at(hours=1))
+    send(client, "e2", "subscription.halted", at(hours=2))
+    send_invoice(
+        client,
+        "i1",
+        "inv_1",
+        "2026-02",
+        months=1,
+        occurred_at=at(hours=3),
+        service_delivery_status="suspended",
+    )
+
+    async def boom(*_args, **_kwargs):
+        raise RuntimeError("simulated crash after transition")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(
+            ingest_mod.RecoveryWindowService, "handle_reactivation", boom
+        )
+        send(client, "e3", "subscription.activated", at(hours=10))
+
+    report = client.post("/api/recovery-cases/reconcile").json()
+    cases = client.get("/api/recovery-cases", params={"run_id": RUN_ID}).json()
+    assert report["created_case_ids"] == []
+    assert cases == []
+    invoices = get_invoices(client)
+    assert invoices[0]["collectibility_status"] == "not_collectible"
+    assert invoices[0]["collectibility_reason_codes"] == ["SERVICE_SUSPENDED"]

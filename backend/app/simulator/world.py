@@ -3,7 +3,15 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from app.domain.enums import CardType, EventType, SubscriptionStatus
+from app.domain.enums import (
+    CardType,
+    CollectibilityStatus,
+    EventType,
+    InvoiceStatus,
+    RecoveryCaseStatus,
+    ServiceDeliveryStatus,
+    SubscriptionStatus,
+)
 from app.domain.time import to_storage_precision
 from app.models.documents import Customer, Subscription
 from app.repositories.customers import CustomerRepository
@@ -33,7 +41,14 @@ class WorldSummary:
     halted_never_returned_count: int
     reactivated_count: int
     recovery_case_count: int
+    collectible_recovery_case_count: int
+    review_required_case_count: int
     historical_invoice_count: int
+    historical_unpaid_amount_paise: int
+    collectible_amount_paise: int
+    review_required_amount_paise: int
+    not_collectible_amount_paise: int
+    #: Collectible eligible receivable. Not raw historical invoices.
     revenue_at_risk_paise: int
     domestic_card_count: int
     international_card_count: int
@@ -125,6 +140,7 @@ class WorldGenerator:
             cycles=plan.missed_cycles,
             amount=plan.plan_amount_paise,
             reactivate=plan.fate is Fate.REACTIVATED,
+            delivery=plan.first_halt_delivery,
         )
         if plan.fate is Fate.REACTIVATED and plan.halt_cycles == 2:
             second = _at(halt_start, days=30 * plan.missed_cycles + 50)
@@ -136,6 +152,7 @@ class WorldGenerator:
                 cycles=max(1, plan.missed_cycles // 2),
                 amount=plan.plan_amount_paise,
                 reactivate=True,
+                delivery=plan.second_halt_delivery,
             )
 
     async def _halt_cycle(
@@ -148,6 +165,7 @@ class WorldGenerator:
         cycles: int,
         amount: int,
         reactivate: bool,
+        delivery: tuple[ServiceDeliveryStatus, ...] = (),
     ) -> None:
         pending_at = _at(halt_at, days=-5)
         await self.ingest.ingest(
@@ -171,6 +189,11 @@ class WorldGenerator:
         for i in range(cycles):
             period = _at(halt_at, days=30 * i + 1)
             cycle = f"{period.year:04d}-{period.month:02d}"
+            status = (
+                delivery[i]
+                if i < len(delivery)
+                else ServiceDeliveryStatus.UNKNOWN
+            )
             await self.ingest.ingest(
                 EventIn(
                     event_id=f"{run_id}_{subscription_id}_{tag}_inv{i}",
@@ -184,6 +207,7 @@ class WorldGenerator:
                         "period_start": period.isoformat(),
                         "period_end": _at(period, days=30).isoformat(),
                         "amount_paise": amount,
+                        "service_delivery_status": status.value,
                     },
                 )
             )
@@ -215,6 +239,35 @@ class WorldGenerator:
         self, run_id: str, plans: list[SubscriberPlan]
     ) -> WorldSummary:
         cases = await RecoveryCaseRepository(self.customers.db).list_by_run(run_id)
+        eligible = [c for c in cases if c.is_strategy_eligible()]
+        review_cases = [c for c in cases if c.status is RecoveryCaseStatus.REVIEW_REQUIRED]
+        invoices = await self.ingest.invoices.list_for_run(run_id)
+        subscriptions = await self.subscriptions.list_for_run(run_id)
+        closed_episodes = {
+            episode.episode_id
+            for sub in subscriptions
+            for episode in sub.halt_episodes
+            if episode.reactivated_at is not None
+        }
+        historical = 0
+        collectible = 0
+        review = 0
+        excluded = 0
+        for invoice in invoices:
+            if invoice.halt_episode_id not in closed_episodes:
+                continue
+            if invoice.status is not InvoiceStatus.ISSUED_UNPAID:
+                continue
+            historical += int(invoice.amount_paise)
+            status = invoice.collectibility_status
+            if status is CollectibilityStatus.COLLECTIBLE:
+                collectible += int(invoice.amount_paise)
+            elif status is CollectibilityStatus.REVIEW_REQUIRED:
+                review += int(invoice.amount_paise)
+            else:
+                excluded += int(invoice.amount_paise)
+        at_risk = sum(c.collectible_amount_paise for c in eligible)
+        assert at_risk == sum(c.backlog_amount_paise for c in eligible)
         return WorldSummary(
             subscriber_count=len(plans),
             always_active_count=sum(1 for p in plans if p.fate is Fate.ALWAYS_ACTIVE),
@@ -223,11 +276,17 @@ class WorldGenerator:
             ),
             reactivated_count=sum(1 for p in plans if p.fate is Fate.REACTIVATED),
             recovery_case_count=len(cases),
+            collectible_recovery_case_count=len(eligible),
+            review_required_case_count=len(review_cases),
             historical_invoice_count=_invoice_count(plans),
-            revenue_at_risk_paise=sum(c.backlog_amount_paise for c in cases),
+            historical_unpaid_amount_paise=historical,
+            collectible_amount_paise=collectible,
+            review_required_amount_paise=review,
+            not_collectible_amount_paise=excluded,
+            revenue_at_risk_paise=at_risk,
             domestic_card_count=sum(1 for p in plans if p.card_type is CardType.DOMESTIC),
             international_card_count=sum(
                 1 for p in plans if p.card_type is CardType.INTERNATIONAL
             ),
-            risk_case_count=sum(1 for c in cases if c.risk_flags),
+            risk_case_count=sum(1 for c in eligible if c.risk_flags),
         )

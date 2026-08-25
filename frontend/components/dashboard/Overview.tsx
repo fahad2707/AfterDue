@@ -33,6 +33,16 @@ export function Overview({ data }: { data: DashboardSummary }) {
     : undefined;
   const recovered = best?.revenue_recovered_paise ?? 0;
   const used = best?.interventions_used ?? 0;
+  const historical =
+    data.historical_unpaid_amount_paise ?? data.revenue_at_risk_paise;
+  const collectible = data.collectible_amount_paise ?? data.revenue_at_risk_paise;
+  const review = data.review_required_amount_paise ?? 0;
+  const excluded = data.not_collectible_amount_paise ?? 0;
+  const yieldDenom = collectible || data.revenue_at_risk_paise;
+  const yieldValue =
+    yieldDenom > 0 && data.best_baseline_recovery_paise != null
+      ? data.best_baseline_recovery_paise / yieldDenom
+      : data.best_baseline_yield;
 
   return (
     <div className="space-y-8">
@@ -42,25 +52,35 @@ export function Overview({ data }: { data: DashboardSummary }) {
         </p>
         <h2 className="mt-2 text-3xl font-medium tracking-tight">RECLAIM</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-ink-soft">
-          Recover historical subscription revenue after customers return.
+          Reconstruct historical unpaid invoices after post-halt reactivation,
+          validate collectible receivables, then optimize bounded recovery only
+          over eligible debt.
         </p>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Card
-          label="Historical revenue at risk"
-          value={formatPaiseINR(data.revenue_at_risk_paise)}
+          label="Historical unpaid invoices"
+          value={formatPaiseINR(historical)}
         />
-        <Card label="Recovery cases" value={formatCount(data.recovery_case_count)} />
-        <Card label="Reactivated customers" value={formatCount(data.reactivated_count)} />
+        <Card
+          label="Collectible receivables"
+          value={formatPaiseINR(collectible)}
+        />
+        <Card label="Review required" value={formatPaiseINR(review)} />
+        <Card
+          label="Excluded / not collectible"
+          value={formatPaiseINR(excluded)}
+          hint="Not lost revenue — service was not a valid receivable"
+        />
+        <Card
+          label="Recovery cases"
+          value={formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
+        />
         <Card label="Intervention budget" value={formatCount(data.intervention_budget)} />
         <Card
-          label="Best baseline recovery"
-          value={
-            data.best_baseline_recovery_paise == null
-              ? "—"
-              : formatPaiseINR(data.best_baseline_recovery_paise)
-          }
+          label="Recovered revenue"
+          value={recovered ? formatPaiseINR(recovered) : "—"}
           hint={
             data.best_baseline_name
               ? strategyLabel(data.best_baseline_name)
@@ -78,13 +98,17 @@ export function Overview({ data }: { data: DashboardSummary }) {
         />
         <Card
           label="Recovery yield"
-          value={formatRatio(data.best_baseline_yield)}
+          value={formatRatio(yieldValue)}
+          hint="Recovered / collectible recovery-eligible revenue"
         />
       </section>
 
       <RevenueFunnel
-        atRisk={data.revenue_at_risk_paise}
-        cases={data.recovery_case_count}
+        historicalUnpaid={historical}
+        collectible={collectible}
+        reviewRequired={review}
+        excluded={excluded}
+        cases={data.collectible_recovery_case_count ?? data.recovery_case_count}
         interventions={used}
         recovered={recovered}
       />

@@ -46,6 +46,10 @@ class SubscriptionRepository(Repository):
         cursor = self.col.find(query)
         return [Subscription.model_validate(strip_id(d)) async for d in cursor]
 
+    async def list_for_run(self, run_id: str) -> list[Subscription]:
+        cursor = self.col.find({"run_id": run_id})
+        return [Subscription.model_validate(strip_id(d)) async for d in cursor]
+
     async def apply_transition(
         self,
         subscription_id: str,

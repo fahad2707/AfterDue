@@ -3,12 +3,25 @@
 State transition is already committed when this runs. A failure here must
 not undo that transition — the ledger is authoritative, and reconciliation
 repairs a missing case. See docs/architecture.md §7.
+
+Collectibility runs after unpaid reconstruction and before case economics.
+Invoice existence is not proof of collectibility.
 """
 
 from dataclasses import dataclass
 
 from app.config import get_settings
-from app.domain.enums import Actor, AuditEventType, RecoveryCaseStatus
+from app.domain.collectibility import (
+    CollectibilityDecision,
+    CollectibleBacklogResult,
+    evaluate_collectibility_for_invoices,
+)
+from app.domain.enums import (
+    Actor,
+    AuditEventType,
+    CollectibilityStatus,
+    RecoveryCaseStatus,
+)
 from app.domain.policy import PolicyContext, PolicyDecision
 from app.domain.time import utcnow
 from app.logging import get_logger
@@ -20,6 +33,12 @@ from app.services.audit import AuditTrail
 from app.services.backlog_builder import BacklogBuilder
 
 log = get_logger(__name__)
+
+_INVOICE_AUDIT = {
+    CollectibilityStatus.COLLECTIBLE: AuditEventType.INVOICE_MARKED_COLLECTIBLE,
+    CollectibilityStatus.NOT_COLLECTIBLE: AuditEventType.INVOICE_EXCLUDED_NON_COLLECTIBLE,
+    CollectibilityStatus.REVIEW_REQUIRED: AuditEventType.INVOICE_REVIEW_REQUIRED,
+}
 
 
 @dataclass(frozen=True)
@@ -64,9 +83,9 @@ class RecoveryWindowService:
             actor=self.actor,
         )
 
-        backlog = await self.backlog.for_episode(subscription, episode.episode_id)
+        historical = await self.backlog.for_episode(subscription, episode.episode_id)
 
-        if not backlog.has_outstanding:
+        if not historical.has_outstanding:
             await self.trail.record(
                 run_id=subscription.run_id,
                 subscription_id=subscription.subscription_id,
@@ -82,32 +101,58 @@ class RecoveryWindowService:
             event_type=AuditEventType.BACKLOG_RECONSTRUCTED,
             details={
                 "halt_episode_id": episode.episode_id,
-                "invoice_count": backlog.invoice_count,
-                "invoice_ids": backlog.invoice_ids,
-                "backlog_amount_paise": backlog.backlog_amount_paise,
+                "invoice_count": historical.invoice_count,
+                "invoice_ids": historical.invoice_ids,
+                "historical_unpaid_amount_paise": historical.backlog_amount_paise,
             },
             actor=self.actor,
         )
+
+        invoices = await self.backlog.invoices.list_for_ids(historical.invoice_ids)
+        by_id = {invoice.invoice_id: invoice for invoice in invoices}
+        ordered = [by_id[i] for i in historical.invoice_ids if i in by_id]
+        gated = evaluate_collectibility_for_invoices(ordered)
+        await self._persist_and_audit_collectibility(
+            subscription, episode.episode_id, gated
+        )
+
+        if gated.collectible_amount_paise > 0:
+            status = RecoveryCaseStatus.OPEN
+            collectibility_status = CollectibilityStatus.COLLECTIBLE
+        elif gated.review_required_amount_paise > 0:
+            status = RecoveryCaseStatus.REVIEW_REQUIRED
+            collectibility_status = CollectibilityStatus.REVIEW_REQUIRED
+        else:
+            return RecoveryWindowResult(None, False, None)
 
         customer = await self.customers.get(subscription.customer_id)
         risk_flags = customer.risk_flags if customer else []
 
         now = utcnow()
+        collectible_ids = list(gated.collectible_invoice_ids)
         draft = RecoveryCase(
             case_id=case_id_for(subscription.subscription_id, episode.episode_id),
             run_id=subscription.run_id,
             subscription_id=subscription.subscription_id,
             customer_id=subscription.customer_id,
             halt_episode_id=episode.episode_id,
-            status=RecoveryCaseStatus.OPEN,
-            invoice_ids=backlog.invoice_ids,
-            invoice_count=backlog.invoice_count,
-            backlog_amount_paise=backlog.backlog_amount_paise,
-            oldest_invoice_at=backlog.oldest_invoice_at,
-            newest_invoice_at=backlog.newest_invoice_at,
+            status=status,
+            collectibility_status=collectibility_status,
+            invoice_ids=collectible_ids,
+            invoice_count=len(collectible_ids),
+            backlog_amount_paise=gated.collectible_amount_paise,
+            historical_unpaid_amount_paise=gated.historical_unpaid_amount_paise,
+            collectible_amount_paise=gated.collectible_amount_paise,
+            review_required_amount_paise=gated.review_required_amount_paise,
+            not_collectible_amount_paise=gated.not_collectible_amount_paise,
+            collectible_invoice_ids=collectible_ids,
+            review_required_invoice_ids=list(gated.review_required_invoice_ids),
+            not_collectible_invoice_ids=list(gated.not_collectible_invoice_ids),
+            oldest_invoice_at=historical.oldest_invoice_at,
+            newest_invoice_at=historical.newest_invoice_at,
             halted_at=episode.halted_at,
             reactivated_at=episode.reactivated_at,
-            halt_duration_days=backlog.halt_duration_days,
+            halt_duration_days=historical.halt_duration_days,
             card_type=subscription.card_type,
             risk_flags=risk_flags,
             historical_payment_success_rate=(
@@ -132,6 +177,7 @@ class RecoveryWindowService:
             created_at=now,
             updated_at=now,
         )
+        assert draft.backlog_amount_paise == draft.collectible_amount_paise
 
         case, created = await self.cases.create_if_absent(draft)
         if not created:
@@ -145,7 +191,11 @@ class RecoveryWindowService:
                 },
                 actor=self.actor,
             )
-            decision = self._evaluate(subscription, customer, case)
+            decision = (
+                self._evaluate(subscription, customer, case)
+                if case.is_strategy_eligible()
+                else None
+            )
             return RecoveryWindowResult(case, False, decision)
 
         await self.trail.record(
@@ -155,11 +205,20 @@ class RecoveryWindowService:
             details={
                 "case_id": case.case_id,
                 "halt_episode_id": episode.episode_id,
+                "status": case.status.value,
+                "collectibility_status": case.collectibility_status.value,
                 "invoice_count": case.invoice_count,
                 "backlog_amount_paise": case.backlog_amount_paise,
+                "collectible_amount_paise": case.collectible_amount_paise,
+                "historical_unpaid_amount_paise": case.historical_unpaid_amount_paise,
+                "review_required_amount_paise": case.review_required_amount_paise,
+                "not_collectible_amount_paise": case.not_collectible_amount_paise,
             },
             actor=self.actor,
         )
+
+        if not case.is_strategy_eligible():
+            return RecoveryWindowResult(case, True, None)
 
         decision = self._evaluate(subscription, customer, case)
         await self.trail.record(
@@ -198,6 +257,73 @@ class RecoveryWindowService:
             )
 
         return RecoveryWindowResult(case, True, decision)
+
+    async def _persist_and_audit_collectibility(
+        self,
+        subscription: Subscription,
+        halt_episode_id: str,
+        gated: CollectibleBacklogResult,
+    ) -> None:
+        await self.trail.record(
+            run_id=subscription.run_id,
+            subscription_id=subscription.subscription_id,
+            event_type=AuditEventType.COLLECTIBILITY_EVALUATED,
+            details={
+                "halt_episode_id": halt_episode_id,
+                "historical_unpaid_amount_paise": gated.historical_unpaid_amount_paise,
+                "collectible_amount_paise": gated.collectible_amount_paise,
+                "not_collectible_amount_paise": gated.not_collectible_amount_paise,
+                "review_required_amount_paise": gated.review_required_amount_paise,
+                "collectible_invoice_ids": gated.collectible_invoice_ids,
+                "not_collectible_invoice_ids": gated.not_collectible_invoice_ids,
+                "review_required_invoice_ids": gated.review_required_invoice_ids,
+                "reason_codes": [
+                    code.value
+                    for decision in gated.decisions
+                    for code in decision.reason_codes
+                ],
+            },
+            actor=self.actor,
+        )
+        for decision in gated.decisions:
+            await self._audit_invoice_decision(subscription, halt_episode_id, decision)
+            await self.backlog.invoices.set_collectibility(
+                decision.invoice_id,
+                status=decision.status,
+                reason_codes=list(decision.reason_codes),
+            )
+        if gated.collectible_amount_paise > 0:
+            await self.trail.record(
+                run_id=subscription.run_id,
+                subscription_id=subscription.subscription_id,
+                event_type=AuditEventType.RECOVERABLE_BACKLOG_CONFIRMED,
+                details={
+                    "halt_episode_id": halt_episode_id,
+                    "collectible_amount_paise": gated.collectible_amount_paise,
+                    "collectible_invoice_ids": gated.collectible_invoice_ids,
+                },
+                actor=self.actor,
+            )
+
+    async def _audit_invoice_decision(
+        self,
+        subscription: Subscription,
+        halt_episode_id: str,
+        decision: CollectibilityDecision,
+    ) -> None:
+        await self.trail.record(
+            run_id=subscription.run_id,
+            subscription_id=subscription.subscription_id,
+            event_type=_INVOICE_AUDIT[decision.status],
+            details={
+                "halt_episode_id": halt_episode_id,
+                "invoice_id": decision.invoice_id,
+                "collectibility_status": decision.status.value,
+                "reason_codes": [c.value for c in decision.reason_codes],
+                "eligible_amount_paise": decision.eligible_amount_paise,
+            },
+            actor=self.actor,
+        )
 
     def _evaluate(self, subscription, customer, case: RecoveryCase) -> PolicyDecision:
         settings = get_settings()

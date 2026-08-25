@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from random import Random
 
-from app.domain.enums import CardType
+from app.domain.enums import CardType, ServiceDeliveryStatus
 from app.simulator.config import PLAN_LADDER_PAISE, SimulationConfig
 
 
@@ -12,6 +12,17 @@ class Fate(StrEnum):
     ALWAYS_ACTIVE = "always_active"
     HALTED_NEVER_RETURNED = "halted_never_returned"
     REACTIVATED = "reactivated"
+
+
+class ServiceDeliveryMode(StrEnum):
+    """Generic merchant service-delivery modes. Not real companies.
+
+    PRODUCT/SIMULATION ASSUMPTION — rates are knobs, not market facts.
+    """
+
+    SUSPEND_ON_HALT = "suspend_on_halt"
+    CONTINUE_DURING_GRACE = "continue_during_grace"
+    MIXED_OR_UNKNOWN = "mixed_or_unknown"
 
 
 @dataclass(frozen=True)
@@ -30,6 +41,9 @@ class SubscriberPlan:
     previous_halt_count: int
     subscription_age_days: int
     halt_offset_days: int
+    service_delivery_mode: ServiceDeliveryMode
+    first_halt_delivery: tuple[ServiceDeliveryStatus, ...]
+    second_halt_delivery: tuple[ServiceDeliveryStatus, ...]
 
 
 def _draw_plan_amount(rng: Random, config: SimulationConfig) -> int:
@@ -41,6 +55,45 @@ def _draw_plan_amount(rng: Random, config: SimulationConfig) -> int:
     if not eligible:
         return int(config.plan_amount_min_paise)
     return rng.choice(eligible)
+
+
+def _draw_mode(rng: Random, config: SimulationConfig) -> ServiceDeliveryMode:
+    roll = rng.random()
+    if roll < config.suspend_on_halt_rate:
+        return ServiceDeliveryMode.SUSPEND_ON_HALT
+    if roll < config.suspend_on_halt_rate + config.continue_during_grace_rate:
+        return ServiceDeliveryMode.CONTINUE_DURING_GRACE
+    return ServiceDeliveryMode.MIXED_OR_UNKNOWN
+
+
+def draw_delivery_statuses(
+    rng: Random,
+    mode: ServiceDeliveryMode,
+    cycles: int,
+    grace_cycles: int,
+) -> tuple[ServiceDeliveryStatus, ...]:
+    if cycles <= 0:
+        return ()
+    if mode is ServiceDeliveryMode.SUSPEND_ON_HALT:
+        return tuple(ServiceDeliveryStatus.SUSPENDED for _ in range(cycles))
+    if mode is ServiceDeliveryMode.CONTINUE_DURING_GRACE:
+        return tuple(
+            ServiceDeliveryStatus.DELIVERED
+            if i < grace_cycles
+            else ServiceDeliveryStatus.SUSPENDED
+            for i in range(cycles)
+        )
+    # MIXED_OR_UNKNOWN: independent per cycle. Equal thirds. Simulation assumption.
+    choices = (
+        ServiceDeliveryStatus.DELIVERED,
+        ServiceDeliveryStatus.SUSPENDED,
+        ServiceDeliveryStatus.UNKNOWN,
+    )
+    return tuple(rng.choice(choices) for _ in range(cycles))
+
+
+def collectible_cycle_count(delivery: tuple[ServiceDeliveryStatus, ...]) -> int:
+    return sum(1 for status in delivery if status is ServiceDeliveryStatus.DELIVERED)
 
 
 def draw_population(config: SimulationConfig) -> list[SubscriberPlan]:
@@ -64,6 +117,10 @@ def draw_population(config: SimulationConfig) -> list[SubscriberPlan]:
             halt_cycles = 1
 
         hist = round(0.35 + 0.60 * rng.random(), 4)
+        mode = _draw_mode(rng, config)
+        first = draw_delivery_statuses(rng, mode, cycles, config.grace_cycles)
+        second_cycles = max(1, cycles // 2) if halt_cycles == 2 else 0
+        second = draw_delivery_statuses(rng, mode, second_cycles, config.grace_cycles)
         people.append(
             SubscriberPlan(
                 index=index,
@@ -84,6 +141,9 @@ def draw_population(config: SimulationConfig) -> list[SubscriberPlan]:
                 previous_halt_count=0 if fate is Fate.ALWAYS_ACTIVE else halt_cycles,
                 subscription_age_days=rng.randint(90, 900),
                 halt_offset_days=rng.randint(40, 240),
+                service_delivery_mode=mode,
+                first_halt_delivery=first,
+                second_halt_delivery=second,
             )
         )
     return people

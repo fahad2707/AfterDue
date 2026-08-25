@@ -1,10 +1,14 @@
 """Post-halt backlog reconstruction.
 
-Pure: no I/O, no clock, no policy. Given a halt episode and the invoices we
-already have, it answers one question — how much unpaid historical revenue
-belongs to this episode.
+Pure: no I/O, no clock, no policy, no collectibility. Given a halt episode
+and the invoices we already have, it answers one question — how much unpaid
+historical invoice value belongs to this episode.
 
-Lineage is authoritative. An invoice is in the backlog only when
+That amount is HISTORICAL UNPAID BACKLOG. It is not recoverable revenue.
+Collectibility evaluation lives in `app.domain.collectibility` and runs after
+this reconstruction.
+
+Lineage is authoritative. An invoice is in the unpaid set only when
 `halt_episode_id` matches. We do not infer membership from date windows.
 """
 

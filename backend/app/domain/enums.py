@@ -57,6 +57,11 @@ class AuditEventType(StrEnum):
     RECOVERY_WINDOW_OPENED = "RECOVERY_WINDOW_OPENED"
     BACKLOG_RECONSTRUCTED = "BACKLOG_RECONSTRUCTED"
     NO_BACKLOG_FOUND = "NO_BACKLOG_FOUND"
+    COLLECTIBILITY_EVALUATED = "COLLECTIBILITY_EVALUATED"
+    INVOICE_MARKED_COLLECTIBLE = "INVOICE_MARKED_COLLECTIBLE"
+    INVOICE_EXCLUDED_NON_COLLECTIBLE = "INVOICE_EXCLUDED_NON_COLLECTIBLE"
+    INVOICE_REVIEW_REQUIRED = "INVOICE_REVIEW_REQUIRED"
+    RECOVERABLE_BACKLOG_CONFIRMED = "RECOVERABLE_BACKLOG_CONFIRMED"
     RECOVERY_CASE_CREATED = "RECOVERY_CASE_CREATED"
     RECOVERY_CASE_DUPLICATE = "RECOVERY_CASE_DUPLICATE"
     POLICY_EVALUATED = "POLICY_EVALUATED"
@@ -89,8 +94,42 @@ class Actor(StrEnum):
 
 class RecoveryCaseStatus(StrEnum):
     OPEN = "open"
+    #: Collectibility has not been established. Automatic recovery must not
+    #: proceed. Distinct from ESCALATED, which is a policy/workflow decision
+    #: on an otherwise established recovery situation.
+    REVIEW_REQUIRED = "review_required"
     ESCALATED = "escalated"
     CLOSED = "closed"
+
+
+class ServiceDeliveryStatus(StrEnum):
+    DELIVERED = "delivered"
+    PARTIALLY_DELIVERED = "partially_delivered"
+    SUSPENDED = "suspended"
+    UNKNOWN = "unknown"
+
+
+class CollectibilityStatus(StrEnum):
+    COLLECTIBLE = "collectible"
+    NOT_COLLECTIBLE = "not_collectible"
+    REVIEW_REQUIRED = "review_required"
+
+
+class CollectibilityReasonCode(StrEnum):
+    """Why an invoice is or is not a valid receivable.
+
+    Collectibility answers "is this receivable valid?" Policy answers
+    "given a valid receivable, what actions are allowed right now?"
+    Dispute and opt-out stay on the policy side.
+    """
+
+    SERVICE_DELIVERED = "SERVICE_DELIVERED"
+    SERVICE_SUSPENDED = "SERVICE_SUSPENDED"
+    SERVICE_DELIVERY_UNKNOWN = "SERVICE_DELIVERY_UNKNOWN"
+    SERVICE_PARTIALLY_DELIVERED = "SERVICE_PARTIALLY_DELIVERED"
+    INVOICE_WAIVED = "INVOICE_WAIVED"
+    INVOICE_ALREADY_PAID = "INVOICE_ALREADY_PAID"
+    MERCHANT_MARKED_NON_COLLECTIBLE = "MERCHANT_MARKED_NON_COLLECTIBLE"
 
 
 class ActionType(StrEnum):

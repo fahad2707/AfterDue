@@ -12,10 +12,13 @@ from app.domain.enums import (
     Actor,
     AuditEventType,
     CardType,
+    CollectibilityReasonCode,
+    CollectibilityStatus,
     EventProcessingStatus,
     EventType,
     InvoiceStatus,
     RecoveryCaseStatus,
+    ServiceDeliveryStatus,
     SubscriptionStatus,
 )
 from app.domain.money import Paise
@@ -127,6 +130,16 @@ class Invoice(BaseModel):
     halt_episode_id: str | None = None
     generated_during_halt: bool = False
 
+    #: Service entitlement. Missing ingest data is UNKNOWN (fail closed).
+    service_delivery_status: ServiceDeliveryStatus = ServiceDeliveryStatus.UNKNOWN
+    waived: bool = False
+    merchant_marked_non_collectible: bool = False
+    #: Written by the collectibility engine at recovery-window time.
+    collectibility_status: CollectibilityStatus = CollectibilityStatus.REVIEW_REQUIRED
+    collectibility_reason_codes: list[CollectibilityReasonCode] = Field(
+        default_factory=lambda: [CollectibilityReasonCode.SERVICE_DELIVERY_UNKNOWN]
+    )
+
     created_at: datetime
 
 
@@ -184,10 +197,19 @@ class RecoveryCase(BaseModel):
     synthetic_customer_key: str | None = None
     halt_episode_id: str
     status: RecoveryCaseStatus = RecoveryCaseStatus.OPEN
+    collectibility_status: CollectibilityStatus = CollectibilityStatus.COLLECTIBLE
 
     invoice_ids: list[str] = Field(default_factory=list)
     invoice_count: int = 0
+    #: Compatibility/economic field. MUST equal collectible_amount_paise.
     backlog_amount_paise: Paise
+    historical_unpaid_amount_paise: Paise = 0
+    collectible_amount_paise: Paise = 0
+    review_required_amount_paise: Paise = 0
+    not_collectible_amount_paise: Paise = 0
+    collectible_invoice_ids: list[str] = Field(default_factory=list)
+    review_required_invoice_ids: list[str] = Field(default_factory=list)
+    not_collectible_invoice_ids: list[str] = Field(default_factory=list)
 
     oldest_invoice_at: datetime | None = None
     newest_invoice_at: datetime | None = None
@@ -213,3 +235,67 @@ class RecoveryCase(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_collectibility_fields(cls, data):
+        """Pre-gate documents stored only backlog_amount_paise.
+
+        Those worlds treated unpaid halt invoices as collectible. New fields
+        default from that amount so old fixtures remain valid. After the
+        collectibility gate, callers must set the fields explicitly.
+        """
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        backlog = data.get("backlog_amount_paise", 0)
+        if data.get("collectible_amount_paise") is None:
+            data["collectible_amount_paise"] = backlog
+        if data.get("historical_unpaid_amount_paise") is None:
+            data["historical_unpaid_amount_paise"] = backlog
+        data.setdefault("review_required_amount_paise", 0)
+        data.setdefault("not_collectible_amount_paise", 0)
+        ids = data.get("invoice_ids") or []
+        if not data.get("collectible_invoice_ids"):
+            data["collectible_invoice_ids"] = list(ids)
+        data.setdefault("review_required_invoice_ids", [])
+        data.setdefault("not_collectible_invoice_ids", [])
+        return data
+
+    @model_validator(mode="after")
+    def backlog_equals_collectible(self):
+        if self.backlog_amount_paise != self.collectible_amount_paise:
+            raise ValueError(
+                "backlog_amount_paise must equal collectible_amount_paise"
+            )
+        return self
+
+    def evaluated_invoice_ids(self) -> list[str]:
+        seen: list[str] = []
+        for group in (
+            self.collectible_invoice_ids or self.invoice_ids,
+            self.review_required_invoice_ids,
+            self.not_collectible_invoice_ids,
+        ):
+            for invoice_id in group:
+                if invoice_id not in seen:
+                    seen.append(invoice_id)
+        return seen
+
+    def is_strategy_eligible(self) -> bool:
+        """True only for established collectible receivables.
+
+        REVIEW_REQUIRED is not an economic case. CLOSED is done.
+        ESCALATED remains eligible so every strategy sees the same universe;
+        policy, not collectibility, restricts those actions.
+        """
+        if self.backlog_amount_paise != self.collectible_amount_paise:
+            raise ValueError(
+                "backlog_amount_paise must equal collectible_amount_paise"
+            )
+        if self.status in (
+            RecoveryCaseStatus.REVIEW_REQUIRED,
+            RecoveryCaseStatus.CLOSED,
+        ):
+            return False
+        return self.collectible_amount_paise > 0

@@ -2,7 +2,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
-from app.domain.enums import AuditEventType, CardType, InvoiceStatus, SubscriptionStatus
+from app.domain.enums import (
+    AuditEventType,
+    CardType,
+    CollectibilityReasonCode,
+    CollectibilityStatus,
+    InvoiceStatus,
+    ServiceDeliveryStatus,
+    SubscriptionStatus,
+)
 from app.domain.money import Paise, format_paise
 
 
@@ -78,6 +86,13 @@ class InvoiceOut(BaseModel):
     status: InvoiceStatus
     halt_episode_id: str | None
     generated_during_halt: bool
+    service_delivery_status: ServiceDeliveryStatus = ServiceDeliveryStatus.UNKNOWN
+    waived: bool = False
+    merchant_marked_non_collectible: bool = False
+    collectibility_status: CollectibilityStatus = CollectibilityStatus.REVIEW_REQUIRED
+    collectibility_reason_codes: list[CollectibilityReasonCode] = Field(
+        default_factory=list
+    )
     created_at: datetime
 
     @computed_field

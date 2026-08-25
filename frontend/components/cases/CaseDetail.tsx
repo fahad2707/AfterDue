@@ -1,12 +1,13 @@
 import { AgentWorkbench } from "@/components/cases/AgentWorkbench";
 import { AuditTimeline } from "@/components/cases/AuditTimeline";
 import { BacklogTable } from "@/components/cases/BacklogTable";
+import { CollectibilityPanel } from "@/components/cases/CollectibilityPanel";
 import { LifecycleTimeline } from "@/components/cases/LifecycleTimeline";
 import { ModelPanel } from "@/components/cases/ModelPanel";
 import { PolicyPanel } from "@/components/cases/PolicyPanel";
 import { WhyThisCase } from "@/components/cases/WhyThisCase";
 import { EmptyState } from "@/components/ui/StateBlock";
-import { formatDate, formatDateRange } from "@/lib/format/date";
+import { formatDate } from "@/lib/format/date";
 import { formatPaiseINR } from "@/lib/format/money";
 import type { AuditEntry, RecoveryCaseDetail } from "@/types/api";
 
@@ -19,6 +20,8 @@ export function CaseDetailView({
 }) {
   const row = detail.case;
   const name = detail.customer_name || row.customer_name || row.customer_id;
+  const historical = row.historical_unpaid_amount_paise ?? row.backlog_amount_paise;
+  const collectible = row.collectible_amount_paise ?? row.backlog_amount_paise;
 
   return (
     <div className="space-y-8">
@@ -33,19 +36,21 @@ export function CaseDetailView({
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
           <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Historical revenue at risk
+            Historical unpaid
           </p>
           <p className="mt-2 font-mono text-2xl tabular">
-            {formatPaiseINR(row.backlog_amount_paise)}
+            {formatPaiseINR(historical)}
           </p>
         </div>
         <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
           <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Unpaid invoices
+            Collectible
           </p>
-          <p className="mt-2 font-mono text-2xl tabular">{row.invoice_count}</p>
+          <p className="mt-2 font-mono text-2xl tabular">
+            {formatPaiseINR(collectible)}
+          </p>
           <p className="mt-1 text-xs text-ink-soft">
-            {formatDateRange(row.oldest_invoice_at, row.newest_invoice_at)}
+            Only this amount enters recovery optimization
           </p>
         </div>
         <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
@@ -83,19 +88,23 @@ export function CaseDetailView({
 
       <section>
         <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Historical backlog
+          Historical invoices
         </h3>
         {detail.invoices.length === 0 ? (
           <EmptyState title="No invoices" body="This case has no invoice records." />
         ) : (
-          <BacklogTable invoices={detail.invoices} />
+          <BacklogTable
+            invoices={detail.invoices}
+            collectibleTotal={row.collectible_amount_paise ?? row.backlog_amount_paise}
+          />
         )}
       </section>
 
+      <CollectibilityPanel caseRow={row} invoices={detail.invoices} />
+      <PolicyPanel policy={detail.policy} />
       <ModelPanel analysis={detail.model_analysis ?? row.model_analysis} />
       <AgentWorkbench detail={detail} />
       <WhyThisCase caseRow={row} policy={detail.policy} />
-      <PolicyPanel policy={detail.policy} />
 
       <section>
         <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">

@@ -31,6 +31,8 @@ export function policyStatusLabel(status: string): string {
       return "Escalation required";
     case "stopped":
       return "Stopped";
+    case "review_required":
+      return "Review required";
     default:
       return status;
   }

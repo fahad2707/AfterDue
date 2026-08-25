@@ -28,9 +28,9 @@ def explain(facts: dict) -> CaseExplanation:
     invoices = int(facts["invoice_count"])
     action = str(facts.get("recommended_action") or "no_action").replace("_", " ")
     why = (
-        f"RECLAIM identified {backlog} across {invoices} unpaid invoice"
-        f"{'' if invoices == 1 else 's'} generated during this subscription's "
-        "halted period. The subscription has since returned to active."
+        f"RECLAIM reconstructed historical unpaid invoices after this halt and "
+        f"confirmed {backlog} collectible across {invoices} eligible invoice"
+        f"{'' if invoices == 1 else 's'}. The subscription has since returned to active."
     )
     constraints = [
         REASON_SENTENCES[code]
@@ -83,7 +83,8 @@ def answer(question: str, facts: dict) -> QAAnswer:
         return QAAnswer(
             answer=(
                 f"The case exists because the subscription returned to active after a "
-                f"halt that left {facts['invoice_count']} unpaid invoices totaling "
+                f"halt. Collectibility validation confirmed {facts['invoice_count']} "
+                f"eligible invoices totaling "
                 f"{format_paise(int(facts['backlog_amount_paise']))}."
             ),
             grounding=grounding,

@@ -20,7 +20,7 @@ export function LifecycleTimeline({
     { title: "Halted", detail: formatDate(caseRow.halted_at), tone: "warn" },
     {
       title: "Invoices accumulate",
-      detail: `${caseRow.invoice_count} unpaid invoices during the halt episode`,
+      detail: `${caseRow.invoice_count} collectible invoices from the halt episode`,
       tone: "warn",
     },
     { title: "Active", detail: `Returned ${formatDate(caseRow.reactivated_at)}`, tone: "good" },

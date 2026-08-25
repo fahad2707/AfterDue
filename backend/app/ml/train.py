@@ -215,6 +215,7 @@ def train_and_select(
             "method": "GroupShuffleSplit by world_seed:synthetic_case_key",
         },
         "synthetic": True,
+        "collectibility_gate": True,
     }
     metadata["business_metrics"] = {
         "held_out_positive_rate": float(y_test.mean()) if len(y_test) else 0.0,

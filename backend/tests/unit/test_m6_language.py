@@ -58,7 +58,8 @@ class _Injection:
 def test_deterministic_explanation_works_without_llm():
     explanation = explain(FACTS)
     assert "₹14,997" in explanation.why_case_exists
-    assert "3 unpaid" in explanation.why_case_exists
+    assert "3 eligible" in explanation.why_case_exists
+    assert "collectible" in explanation.why_case_exists
     assert "31%" in explanation.recommended_action_explanation
     assert "67%" in explanation.recommended_action_explanation
     assert explanation.synthetic_disclaimer

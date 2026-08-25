@@ -19,7 +19,7 @@ export default async function Home({
     return (
       <EmptyState
         title="No simulation runs"
-        body="Generate a synthetic world to see revenue at risk, recovery cases, and baseline comparison."
+        body="Generate a synthetic world to see collectible receivables, recovery cases, and baseline comparison."
         href="/simulate"
         action="Open simulation"
       />

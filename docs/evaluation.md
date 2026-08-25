@@ -36,9 +36,33 @@ Default rates (config knobs, not claimed as real):
 - dispute_rate 0.03
 - opt_out_rate 0.04
 
-Only `HALTED → ACTIVE` with unpaid invoices becomes a recovery case. That
-path goes through the real event ingest, state machine, backlog builder, and
-policy engine.
+## Service delivery during halt (PRODUCT/SIMULATION ASSUMPTION)
+
+Invoice generation does not imply service was delivered. The world generator
+stamps a `service_delivery_status` on each halt-period invoice. These rates
+are knobs, **not** empirical merchant frequencies. They were not chosen so
+that RECLAIM looks better.
+
+| Mode | What it generates |
+|---|---|
+| `SUSPEND_ON_HALT` | Every halt-period invoice is `SUSPENDED` → not collectible |
+| `CONTINUE_DURING_GRACE` | Invoices in the first `grace_cycles` (default 6) are `DELIVERED`; later cycles `SUSPENDED` |
+| `MIXED_OR_UNKNOWN` | Each cycle independently `DELIVERED`, `SUSPENDED`, or `UNKNOWN` with equal weight |
+
+Default mix (remainder after the two rates is mixed):
+
+- suspend_on_halt_rate 0.30
+- continue_during_grace_rate 0.40
+- grace_cycles 6
+
+UNKNOWN fails closed to `REVIEW_REQUIRED` and never enters ML or strategy
+economics. All three strategies see the same post-collectibility case set.
+
+Only `HALTED → ACTIVE` with **collectible** unpaid invoices becomes an
+economically eligible recovery case. Historical unpaid reconstruction still
+runs first; collectibility is a gate after it. That path goes through the
+real event ingest, state machine, backlog builder, collectibility engine,
+and policy engine.
 
 ## Observable vs hidden
 
@@ -131,7 +155,10 @@ score = 1 × backlog_amount_paise
 
 Per strategy, all money integer paise except `recovery_yield` (a ratio):
 
-- revenue at risk, recovered, yield
+- **revenue_at_risk_paise:** sum of collectible eligible receivables on the
+  strategy universe (`backlog_amount_paise` == `collectible_amount_paise`).
+  Not raw historical unpaid invoices.
+- recovered, yield = recovered / collectible eligible (`revenue_at_risk_paise`)
 - interventions used, failed interventions, escalations, no-actions
 - revenue per intervention, revenue per 100 cases
 - **unnecessary interventions:** budget-consuming action whose `no_action`
@@ -173,38 +200,51 @@ Same world, same `run_id`, same policy, same oracle, same intervention
 budget. Only the decision rule changes. RECLAIM uses the recovery model
 (uplift × backlog − cost) and never the oracle or latent intent.
 
-Canonical experiment: `subscriber_count=100`, `seed=42`,
-`intervention_budget=25`. World: 32 recovery cases, ₹741,880 at risk.
+### Pre-collectibility (historical)
+
+Canonical experiment under the old definition (unpaid halt invoices =
+eligible): `subscriber_count=100`, `seed=42`, `intervention_budget=25`.
+World: 32 recovery cases, ₹7,41,880 at risk.
 
 | Strategy | Recovered | Incremental | Yield | Used | Unnecessary | Escalations | ₹ / intervention |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Naive | ₹237,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
-| Rule-based | ₹237,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
-| RECLAIM | ₹238,456 | ₹95,475 | 32.14% | 25 | 5 | 7 | ₹9,538 |
+| Naive | ₹2,37,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
+| Rule-based | ₹2,37,957 | ₹94,976 | 32.07% | 25 | 5 | 7 | ₹9,518 |
+| RECLAIM | ₹2,38,456 | ₹95,475 | 32.14% | 25 | 5 | 7 | ₹9,538 |
 
-RECLAIM won by ₹499 incremental recovered revenue versus the best
-baseline (Naive and Rule-based tied). The simulator was not adjusted.
-Replay of the same `run_id` was identical. All three used 25 budget
-slots and preserved the same 7 escalations.
+Do **not** compare new totals to this table as if they were the same
+experiment.
 
-We do **not** require RECLAIM to beat both baselines. If it loses, that
-result is reported. The simulator is not adjusted.
+### Post-collectibility (current definition)
 
-Metrics compared:
+`revenue_at_risk_paise` is collectible eligible receivable only.
 
-- revenue_recovered_paise
-- incremental_revenue_paise
-- recovery_yield
-- interventions_used
-- unnecessary_intervention_count
-- revenue_per_intervention_paise
-- revenue_per_100_cases_paise
-- escalation_count
-- incremental revenue vs best baseline (`reclaim − max(naive, rule_based)`)
+Canonical experiment: `subscriber_count=100`, `seed=42`,
+`intervention_budget=25`.
 
-Classification quality (precision, recall, F1, ROC-AUC, Brier,
-calibration bins) lives on `/model` and in `docs/model.md`. Accuracy is
-not the headline: probabilities are multiplied by money.
+Funnel: historical unpaid ₹16,71,822 · collectible ₹8,42,415 · review
+₹5,67,448 · excluded ₹2,61,959. 23 collectible cases; 3 review-required
+cases excluded from strategies.
 
-See `docs/model.md` for features, grouped splitting, and model selection.
+| Strategy | Recovered | Incremental | Yield | Used | Unnecessary | Escalations | ₹ / intervention |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Naive | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 | 5 | 7 | ₹34,591 |
+| Rule-based | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 | 5 | 7 | ₹34,591 |
+| RECLAIM | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 | 5 | 7 | ₹34,591 |
+
+All three strategies received the same post-gate universe. On this seed they
+tied. The simulator was not adjusted. Replay of the same `run_id` was
+identical.
+
+We do **not** require RECLAIM to beat both baselines. If it loses or ties,
+that result is reported.
+
+Yield = recovered / collectible eligible (`revenue_at_risk_paise`).
+
+Retraining used the same methodology (randomized action assignment,
+grouped split, Logistic Regression vs HistGradientBoosting, Brier
+selection). Selected model: HistGradientBoosting (validation Brier 0.1926;
+test Brier 0.1932; ROC-AUC 0.694). Feature schema hash unchanged. Service
+delivery is not an ML feature.
+
 
