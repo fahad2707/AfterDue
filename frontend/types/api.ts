@@ -294,3 +294,67 @@ export type PolicyConfig = {
   provenance_values: string[];
   synthetic: boolean;
 };
+
+export type EvaluationInterval = {
+  point: number;
+  low: number;
+  high: number;
+  samples: number;
+  level: number;
+};
+
+export type EvaluationStrategyRow = {
+  strategy_name: string;
+  universe: string;
+  eligible_cases: number;
+  historical_unpaid_paise: number;
+  truly_collectible_paise: number;
+  incorrectly_targeted_paise: number;
+  gross_recovered_paise: number;
+  collectible_recovered_paise: number;
+  recovery_rate_on_collectible: number;
+  intervention_cost_paise: number;
+  net_recovered_paise: number;
+  incremental_recovered_paise: number;
+  interventions: number;
+  unnecessary_interventions: number;
+  policy_violations_attempted: number;
+  policy_violations_executed: number;
+  human_escalations: number;
+  false_collectibility_rate: number;
+  missed_collectible_paise: number;
+  recovery_per_intervention_paise: number;
+  net_value_per_1000_cases_paise: number;
+  regret_vs_oracle_paise: number | null;
+  synthetic: boolean;
+};
+
+export type EvaluationPopulation = {
+  subscriber_count: number;
+  case_count: number;
+  gated_case_count: number;
+  review_only_case_count: number;
+  excluded_only_case_count: number;
+  historical_unpaid_paise: number;
+  collectible_paise: number;
+  not_collectible_paise: number;
+  review_required_paise: number;
+  human_review_rate: number;
+  intervention_budget: number;
+  seed: number;
+  synthetic: boolean;
+};
+
+export type EvaluationReport = {
+  population: EvaluationPopulation;
+  strategies: Record<string, EvaluationStrategyRow>;
+  intervals: Record<string, Record<string, EvaluationInterval>>;
+  scenario_breakdown: Record<string, Record<string, Record<string, number>>>;
+  diagnostics: string[];
+  action_agreement: Record<string, number>;
+  action_mix: Record<string, Record<string, number>>;
+  family_labels: Record<string, string>;
+  limitations: string[];
+  synthetic: boolean;
+};
+

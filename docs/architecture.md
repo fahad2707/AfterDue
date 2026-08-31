@@ -158,6 +158,12 @@ remain policy. ML never decides collectibility.
 amount only, and must equal `collectible_amount_paise`. Strategies (Naive,
 Rule-based, RECLAIM) share the same post-gate universe.
 
+An offline evaluation layer (`app/evaluation`) additionally scores a
+**Naive ungated** policy that treats historical unpaid as recoverable, so
+the collectibility gate can be measured instead of assumed. That path does
+not change production recovery cases.
+
+
 ---
 
 ## 2. Why each safeguard exists

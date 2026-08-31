@@ -192,6 +192,10 @@ Then `make demo-reset` (backend must already be up) to generate the
 canonical world and print console URLs. Or walk
 [`docs/demo-script.md`](docs/demo-script.md).
 
+The Evaluation page (`/evaluation`) runs an in-memory collectibility
+benchmark. It does not write Mongo. CLI: `make benchmark`.
+
+
 ## Tests
 
 ```bash

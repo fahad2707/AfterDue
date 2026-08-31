@@ -194,7 +194,46 @@ as well. A different seed produces a different world.
   keep the latent out of `CaseView` so that cheat is structurally hard.
 - Rule-based may beat naive. That is allowed. We do not weaken it.
 
+## Offline evaluation layer
+
+The live simulator still compares Naive / Rule-based / RECLAIM on the
+**same post-collectibility universe**. That remains the fairness contract
+for ranking.
+
+A separate in-memory benchmark (`app/evaluation`) answers a different
+question: does a system without a collectibility gate waste effort on
+invalid or uncertain debt?
+
+| Strategy | Universe | Notes |
+|---|---|---|
+| Naive | ungated historical unpaid | Treats halt-lineage invoices as recoverable |
+| Rule-based | gated collectible | Existing deterministic score, production path |
+| RECLAIM | gated collectible | Existing model + EV, production path |
+| Oracle | gated collectible | Expected-value policy using true `recovery_probability`. Not deployable |
+
+Recovered rupees are always collectible-only. Naive can still *target*
+excluded and review-required amounts; those show up as incorrectly
+targeted, not as extra recovered revenue.
+
+Command:
+
+```bash
+make benchmark
+# or
+cd backend && uv run python -m app.evaluation --subscribers 1000 --seed 42
+cd backend && uv run python -m app.evaluation --subscribers 5000 --seed 42
+cd backend && uv run python -m app.evaluation --subscribers 10000 --seed 42
+```
+
+UI: `/evaluation`. Budget stays the canonical 25-per-100 ratio. If
+strategies tie, diagnostics explain why. The population is not retuned
+until RECLAIM wins.
+
+The expected-value oracle is not clairvoyant. Realized incremental
+recovery can beat it on one seed.
+
 ## M5 — RECLAIM vs baselines
+
 
 Same world, same `run_id`, same policy, same oracle, same intervention
 budget. Only the decision rule changes. RECLAIM uses the recovery model

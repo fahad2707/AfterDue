@@ -1,4 +1,4 @@
-.PHONY: setup backend frontend test test-unit test-integration lint check clean demo demo-reset
+.PHONY: setup backend frontend test test-unit test-integration lint check clean demo demo-reset benchmark
 
 UV := $(HOME)/.local/bin/uv
 
@@ -42,3 +42,9 @@ demo:
 
 demo-reset:
 	bash scripts/demo.sh reset
+
+# In-memory collectibility benchmark. Does not write Mongo.
+# Default: 1000 subscribers / seed 42 / budget scaled 25 per 100.
+benchmark:
+	cd backend && $(UV) run python -m app.evaluation --subscribers 1000 --seed 42
+

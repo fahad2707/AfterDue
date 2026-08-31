@@ -27,8 +27,12 @@ Generation through the real ingest path takes a couple of minutes.
 9. Open one case. Confirm lifecycle, per-invoice service delivery and
    collectibility, Collectibility panel before Policy, then Model, audit.
 10. Open `/policy`. Confirm deterministic rules and documented vs assumed provenance.
+11. Open `/evaluation`. Run the 1,000-subscriber benchmark (seed 42). Read
+    whether Naive targeted invalid debt, and the diagnostics if strategies tie.
 
-Every rupee figure on these pages comes from the selected simulation run.
+Every rupee figure on Overview/Cases comes from the selected simulation run.
+Evaluation is a separate in-memory benchmark and does not write Mongo.
+
 
 ## M6 — agent trace (after M5 model + a generated run)
 

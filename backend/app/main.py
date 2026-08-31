@@ -12,6 +12,7 @@ from app.repositories.indexes import ensure_indexes
 from app.routes import (
     agent,
     dashboard,
+    evaluation,
     events,
     health,
     ledger,
@@ -92,4 +93,5 @@ app.include_router(recovery.router)
 app.include_router(simulator.router)
 app.include_router(dashboard.router)
 app.include_router(model.router)
+app.include_router(evaluation.router)
 app.include_router(agent.router)
