@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f4f6fb;
+  --paper: #f3f5f9;
   --paper-raised: #ffffff;
-  --ink: #102033;
-  --ink-soft: #5a6880;
-  --line: #d7e0ee;
-  --forest: #2b6bed;
-  --forest-deep: #081427;
-  --sand: #e8eef8;
-  --amber: #9a5b12;
-  --amber-soft: #f6ead4;
-  --good: #147a58;
-  --stop: #c0373a;
-  --attention: #b45309;
+  --surface-elevated: #f8fafc;
+  --ink: #0e1c30;
+  --ink-soft: #5c6b82;
+  --line: #d5deea;
+  --forest: #2a5fe8;
+  --forest-deep: #07111f;
+  --sand: #e7edf6;
+  --amber: #8a4f10;
+  --amber-soft: #f4ead8;
+  --good: #0f6d52;
+  --good-soft: #e6f4ee;
+  --stop: #b42318;
+  --stop-soft: #f8e8e6;
+  --attention: #a15c08;
+  --excluded: #64748b;
+  --excluded-soft: #eef1f5;
   --navy-mid: #12243f;
-  --glow: rgba(43, 107, 237, 0.18);
+  --focus: #2a5fe8;
+  --glow: rgba(42, 95, 232, 0.14);
 }
 
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-raised: var(--paper-raised);
+  --color-surface-elevated: var(--surface-elevated);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
@@ -30,8 +37,12 @@
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
   --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
   --color-stop: var(--stop);
+  --color-stop-soft: var(--stop-soft);
   --color-attention: var(--attention);
+  --color-excluded: var(--excluded);
+  --color-excluded-soft: var(--excluded-soft);
   --color-navy-mid: var(--navy-mid);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-sans);
@@ -50,9 +61,27 @@ body {
   font-variant-numeric: lining-nums;
 }
 
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+
 .tabular {
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1, "kern" 1;
+}
+
+.figure {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1, "kern" 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
 .case-row {
@@ -71,9 +100,64 @@ body {
   z-index: 2;
 }
 
+@keyframes ad-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ad-resolve {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ad-stagger {
+  animation: ad-enter 0.28s ease both;
+}
+
+.ad-resolve {
+  animation: ad-resolve 0.32s ease both;
+}
+
+.pipeline-track {
+  position: relative;
+}
+
+.pipeline-track::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--line);
+}
+
+@media (min-width: 1024px) {
+  .pipeline-track::before {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .tour-motion {
+  .tour-motion,
+  .ad-stagger,
+  .ad-resolve,
+  .ad-motion {
     animation: none !important;
     transition: none !important;
+  }
+
+  .motion-safe\:animate-pulse {
+    animation: none !important;
   }
 }

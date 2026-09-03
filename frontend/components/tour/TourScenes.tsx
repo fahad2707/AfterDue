@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { type ReactNode, useEffect } from "react";
 
+import { BrandMark } from "@/components/console/BrandMark";
 import { StatusBadge } from "@/components/ui/Badge";
 import { TOUR_SCENE_COUNT } from "@/lib/tour";
 
@@ -51,20 +52,17 @@ export function TourChrome({
       aria-modal="true"
       aria-labelledby="tour-title"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--glow),_transparent_55%)]" />
-      <div className="relative flex items-center justify-between px-5 py-4 sm:px-8">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/55">
-          Razorpay AI Buildathon · Track 03
-        </p>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 hover:text-white"
-        >
-          Skip intro
-        </button>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--glow),_transparent_50%)]" />
+      <div className="relative px-5 pb-2 pt-6 sm:px-10 sm:pt-8">
+        {scene === 0 ? (
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
+            Product tour
+          </p>
+        ) : (
+          <BrandMark size="tour" />
+        )}
       </div>
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-5 py-6 sm:px-10">
+      <div className="relative flex min-h-0 flex-1 items-start justify-center px-5 pb-6 pt-8 sm:px-10 sm:pt-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={scene}
@@ -78,31 +76,40 @@ export function TourChrome({
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="relative flex items-center justify-between gap-3 px-5 py-4 sm:px-8">
+      <div className="relative px-5 pb-16 pt-6 sm:px-10">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onPrev}
+            disabled={scene === 0}
+            className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 disabled:opacity-30"
+          >
+            Previous
+          </button>
+          <ol className="flex gap-1.5" aria-label="Tour progress">
+            {Array.from({ length: TOUR_SCENE_COUNT }).map((_, index) => (
+              <li
+                key={index}
+                className={`h-1.5 w-6 rounded-full ${
+                  index === scene ? "bg-forest" : "bg-white/20"
+                }`}
+              />
+            ))}
+          </ol>
+          <button
+            type="button"
+            onClick={last ? onFinish : onNext}
+            className="rounded-sm bg-forest px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-white"
+          >
+            {last ? "Enter AfterDue" : scene === 0 ? "Follow the leftover revenue" : "Next"}
+          </button>
+        </div>
         <button
           type="button"
-          onClick={onPrev}
-          disabled={scene === 0}
-          className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 disabled:opacity-30"
+          onClick={onSkip}
+          className="absolute bottom-5 right-5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 hover:text-white sm:right-10"
         >
-          Previous
-        </button>
-        <ol className="flex gap-1.5" aria-label="Tour progress">
-          {Array.from({ length: TOUR_SCENE_COUNT }).map((_, index) => (
-            <li
-              key={index}
-              className={`h-1.5 w-6 rounded-full ${
-                index === scene ? "bg-forest" : "bg-white/20"
-              }`}
-            />
-          ))}
-        </ol>
-        <button
-          type="button"
-          onClick={last ? onFinish : onNext}
-          className="rounded-md bg-forest px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-white"
-        >
-          {last ? "Enter AfterDue" : scene === 0 ? "Follow the leftover revenue" : "Next"}
+          Skip intro
         </button>
       </div>
     </div>
@@ -137,9 +144,9 @@ function FadeLines({
 export function SceneIntro() {
   return (
     <div className="space-y-8">
-      <p id="tour-title" className="text-sm uppercase tracking-[0.22em] text-white/55">
-        AfterDue
-      </p>
+      <div id="tour-title">
+        <BrandMark size="hero" tagline />
+      </div>
       <FadeLines
         lines={[
           "When an active subscription is halted,",
@@ -170,11 +177,11 @@ const STATES = ["Active", "Payment failed", "Pending", "Retries", "Halted"] as c
 export function SceneLifecycle() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
+    <div className="space-y-10">
+      <p id="tour-title" className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">
         Subscription lifecycle
       </p>
-      <ol className="space-y-2">
+      <ol className="space-y-3">
         {STATES.map((label, index) => (
           <motion.li
             key={label}
@@ -182,7 +189,9 @@ export function SceneLifecycle() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: reduce ? 0 : index * 0.08 }}
             className={`flex items-center gap-3 text-lg ${
-              label === "Halted" ? "font-medium text-white" : "text-white/70"
+              label === "Halted"
+                ? "font-medium text-white"
+                : "text-white/45"
             }`}
           >
             <span className="font-mono text-[11px] text-white/40">
@@ -192,8 +201,11 @@ export function SceneLifecycle() {
           </motion.li>
         ))}
       </ol>
-      <p className="text-sm uppercase tracking-[0.16em] text-white/45">Months later</p>
-      <p className="text-2xl font-medium">Halted → Active</p>
+      <div className="space-y-3 border-t border-white/10 pt-8">
+        <p className="text-sm uppercase tracking-[0.16em] text-white/45">Months later</p>
+        <p className="text-2xl font-medium tracking-tight">Halted → Active</p>
+        <p className="text-[11px] uppercase tracking-[0.16em] text-forest">AfterDue</p>
+      </div>
       <p className="max-w-xl text-base leading-7 text-white/75">
         The customer returned. The historical unpaid invoices did not disappear.
         AfterDue begins on that HALTED → ACTIVE edge.
@@ -204,15 +216,15 @@ export function SceneLifecycle() {
 
 export function SceneAssumption() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         The dangerous assumption
       </p>
       <p className="text-sm text-white/60">Illustrative seeded example · not a live case</p>
+      <p className="figure text-5xl font-medium tracking-tight">₹31,996</p>
       <p className="text-[11px] uppercase tracking-[0.14em] text-white/50">
         Historical unpaid
       </p>
-      <p className="font-medium text-5xl tabular tracking-tight">₹31,996</p>
       <p className="text-lg text-white/55 line-through decoration-white/30">
         “₹31,996 available to recover.”
       </p>
@@ -229,14 +241,14 @@ export function SceneAssumption() {
 const INVOICES = [
   { month: "Aug", amount: "₹7,999", service: "Unknown", result: "Review required", tone: "attention" as const },
   { month: "Sep", amount: "₹7,999", service: "Delivered", result: "Collectible", tone: "good" as const },
-  { month: "Oct", amount: "₹7,999", service: "Suspended", result: "Excluded", tone: "stop" as const },
+  { month: "Oct", amount: "₹7,999", service: "Suspended", result: "Excluded", tone: "excluded" as const },
   { month: "Nov", amount: "₹7,999", service: "Delivered", result: "Collectible", tone: "good" as const },
 ];
 
 export function SceneCollectibility() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         Collectibility
       </p>
@@ -248,14 +260,11 @@ export function SceneCollectibility() {
             initial={reduce ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: reduce ? 0 : 0.1 * index }}
-            className="rounded-lg border border-white/10 bg-white/5 px-4 py-3"
+            className="rounded-md border border-white/10 bg-white/5 px-4 py-3"
           >
-            <div className="flex items-baseline justify-between">
-              <p className="text-sm font-medium">{row.month}</p>
-              <p className="font-medium tabular">{row.amount}</p>
-            </div>
-            <p className="mt-2 text-xs uppercase tracking-[0.12em] text-white/50">
-              Service {row.service}
+            <p className="figure text-xl font-medium">{row.amount}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-white/50">
+              {row.month} · {row.service}
             </p>
             <div className="mt-2">
               <StatusBadge tone={row.tone}>{row.result}</StatusBadge>
@@ -265,20 +274,20 @@ export function SceneCollectibility() {
       </ul>
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-white/50">Historical unpaid</dt>
-          <dd className="mt-1 font-medium tabular">₹31,996</dd>
+          <dd className="figure font-medium">₹31,996</dd>
+          <dt className="mt-1 text-white/50">Historical unpaid</dt>
         </div>
         <div>
-          <dt className="text-white/50">Collectible</dt>
-          <dd className="mt-1 font-medium tabular">₹15,998</dd>
+          <dd className="figure font-medium">₹15,998</dd>
+          <dt className="mt-1 text-white/50">Collectible</dt>
         </div>
         <div>
-          <dt className="text-white/50">Excluded</dt>
-          <dd className="mt-1 font-medium tabular">₹7,999</dd>
+          <dd className="figure font-medium">₹7,999</dd>
+          <dt className="mt-1 text-white/50">Excluded</dt>
         </div>
         <div>
-          <dt className="text-white/50">Review required</dt>
-          <dd className="mt-1 font-medium tabular">₹7,999</dd>
+          <dd className="figure font-medium">₹7,999</dd>
+          <dt className="mt-1 text-white/50">Review required</dt>
         </div>
       </dl>
       <p className="text-lg font-medium">Only ₹15,998 enters recovery optimization.</p>
@@ -288,18 +297,18 @@ export function SceneCollectibility() {
 
 const PIPE = [
   ["Collectibility", "Is this receivable valid?"],
-  ["Policy", "What actions are allowed?"],
-  ["Recovery model", "What is likely under each action?"],
-  ["Economics", "Where does intervention add incremental value?"],
-  ["Validator", "Is the action still safe right now?"],
-  ["Execution", "Act within bounded rules."],
-  ["Audit", "Record why every decision happened."],
+  ["Policy", "What are we allowed to do?"],
+  ["Model", "What is likely under each permitted action?"],
+  ["Economics", "Does acting create incremental value?"],
+  ["Validator", "Is it still safe immediately before acting?"],
+  ["Execution", "What happened?"],
+  ["Audit", "Can we prove why?"],
 ] as const;
 
 export function ScenePipeline() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         Decision engine
       </p>
@@ -314,7 +323,7 @@ export function ScenePipeline() {
             initial={reduce ? false : { opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: reduce ? 0 : 0.07 * index }}
-            className="grid grid-cols-[140px_minmax(0,1fr)] gap-3 border-l border-white/15 pl-3 text-sm"
+            className="grid grid-cols-[120px_minmax(0,1fr)] gap-3 border-l border-white/15 pl-3 text-sm sm:grid-cols-[140px_minmax(0,1fr)]"
           >
             <span className="font-medium">{title}</span>
             <span className="text-white/70">{body}</span>
@@ -327,7 +336,7 @@ export function ScenePipeline() {
 
 export function SceneDecision() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         The decision
       </p>
@@ -335,28 +344,28 @@ export function SceneDecision() {
         Illustrative seeded example on ₹15,998 collectible · not live model output
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-white/50">
+        <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
+          <p className="figure text-3xl font-medium">17.5%</p>
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-white/50">
             Without intervention
           </p>
-          <p className="mt-2 text-3xl font-medium tabular">17.5%</p>
-          <p className="mt-1 text-sm text-white/70">≈ ₹2,807</p>
+          <p className="mt-1 text-sm text-white/70">P(recovery | no action)</p>
         </div>
-        <div className="rounded-lg border border-forest/40 bg-forest/15 px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-            Send payment link
+        <div className="rounded-md border border-forest/40 bg-forest/15 px-4 py-4">
+          <p className="figure text-3xl font-medium">50.4%</p>
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-white/50">
+            With intervention
           </p>
-          <p className="mt-2 text-3xl font-medium tabular">50.4%</p>
-          <p className="mt-1 text-sm text-white/70">≈ ₹8,070</p>
+          <p className="mt-1 text-sm text-white/70">P(recovery | action) · send payment link</p>
         </div>
       </div>
-      <p>
+      <p className="text-xl font-medium">
         Estimated intervention lift{" "}
-        <span className="font-medium tabular">+32.9 pp</span>
+        <span className="figure">+32.9 pp</span>
       </p>
       <p>
         Expected incremental recovery{" "}
-        <span className="font-medium tabular">₹5,260</span>
+        <span className="figure font-medium">₹5,260</span>
       </p>
       <div className="flex flex-wrap gap-2">
         <StatusBadge tone="stop">Manual charge blocked</StatusBadge>
@@ -379,7 +388,7 @@ const GUARDS = [
 export function SceneBounds() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
         Bounded automation
       </p>
@@ -393,7 +402,7 @@ export function SceneBounds() {
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: reduce ? 0 : 0.06 * index }}
-            className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-sm"
+            className="flex items-center justify-between rounded-md border border-white/10 px-3 py-2 text-sm"
           >
             <span>{rule}</span>
             <span className="font-medium uppercase tracking-[0.12em] text-white/70">
@@ -412,8 +421,8 @@ export function SceneBounds() {
 
 export function SceneHandoff() {
   return (
-    <div className="space-y-6">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
+    <div className="space-y-8">
+      <p id="tour-title" className="sr-only">
         AfterDue
       </p>
       <p className="text-3xl font-medium tracking-tight">

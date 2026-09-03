@@ -14,34 +14,78 @@ export function LifecycleTimeline({
     episodes.find((item) => item.episode_id === caseRow.halt_episode_id) ??
     episodes[0];
 
-  const steps = [
-    { title: "Active", detail: createdAt ? `Subscription created ${formatDate(createdAt)}` : "Subscription was active", tone: "quiet" },
-    { title: "Pending", detail: "Payment retries failed before halt", tone: "quiet" },
-    { title: "Halted", detail: formatDate(caseRow.halted_at), tone: "warn" },
+  const quiet = [
     {
-      title: "Invoices accumulate",
-      detail: `${caseRow.invoice_count} collectible invoices from the halt episode`,
-      tone: "warn",
+      title: "Active",
+      detail: createdAt
+        ? `Subscription created ${formatDate(createdAt)}`
+        : "Subscription was active",
     },
-    { title: "Active", detail: `Returned ${formatDate(caseRow.reactivated_at)}`, tone: "good" },
     {
-      title: "Recovery window opened",
-      detail: episode?.episode_id
-        ? `Case ${caseRow.case_id}`
-        : "Recovery case created",
-      tone: "good",
+      title: "Pending / retries",
+      detail: "Normal recovery lifecycle — failed payments before halt",
     },
   ];
 
   return (
-    <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-      {steps.map((step, index) => (
-        <li key={`${step.title}-${index}`} className="rounded-md border border-line bg-paper-raised px-3 py-3">
-          <p className="font-mono text-[10px] text-ink-soft">{String(index + 1).padStart(2, "0")}</p>
-          <p className="mt-1 text-sm font-medium">{step.title}</p>
-          <p className="mt-1 text-xs leading-5 text-ink-soft">{step.detail}</p>
-        </li>
-      ))}
-    </ol>
+    <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
+      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+        Normal recovery lifecycle
+      </p>
+      <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+        {quiet.map((step) => (
+          <li
+            key={step.title}
+            className="rounded-md border border-dashed border-line bg-surface-elevated px-3 py-3 opacity-70"
+          >
+            <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+              {step.title}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-ink-soft">{step.detail}</p>
+          </li>
+        ))}
+      </ol>
+
+      <div className="mt-4 grid gap-2 border-t border-line pt-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-stretch">
+        <div className="rounded-md border border-attention/25 bg-amber-soft/40 px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-attention">Halted</p>
+          <p className="mt-1 figure text-sm font-medium">{formatDate(caseRow.halted_at)}</p>
+          <p className="mt-1 text-xs leading-5 text-ink-soft">
+            {caseRow.invoice_count} unpaid invoices accumulated during the halt episode
+            {episode?.episode_id ? ` · ${episode.episode_id}` : ""}
+          </p>
+        </div>
+        <p
+          className="hidden items-center justify-center text-xs uppercase tracking-[0.16em] text-ink-soft lg:flex"
+          aria-hidden="true"
+        >
+          →
+        </p>
+        <div className="rounded-md border border-forest/25 bg-forest/5 px-3 py-3">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-forest">Active</p>
+          <p className="mt-1 figure text-sm font-medium">
+            {formatDate(caseRow.reactivated_at)}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-ink-soft">
+            Customer returned. Previous unpaid cycles are not auto-charged.
+          </p>
+        </div>
+        <p
+          className="hidden items-center justify-center text-xs uppercase tracking-[0.16em] text-ink-soft lg:flex"
+          aria-hidden="true"
+        >
+          →
+        </p>
+        <div className="rounded-md border border-forest/40 bg-navy-mid px-3 py-3 text-paper-raised">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-white/70">
+            Post-halt
+          </p>
+          <p className="mt-1 text-sm font-medium tracking-tight">AfterDue</p>
+          <p className="mt-1 text-xs leading-5 text-white/70">
+            Recovery window opened for leftover revenue.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

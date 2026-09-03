@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { StatusBadge } from "@/components/ui/Badge";
 import { apiGet, apiPost } from "@/lib/api/http";
 import { formatLiftPp, formatPaiseINR } from "@/lib/format/money";
 import { actionLabel } from "@/lib/format/policy";
@@ -62,16 +63,23 @@ const TRACE_STEPS: Array<{ event: string; label: string }> = [
   { event: "POLICY_EVALUATED", label: "Policy checked" },
   { event: "MODEL_ANALYZED", label: "Model analyzed" },
   { event: "ACTION_PROPOSED", label: "Action proposed" },
-  { event: "ACTION_VALIDATION_STARTED", label: "Validator started" },
+  { event: "ACTION_VALIDATION_STARTED", label: "Validator checked" },
   { event: "POLICY_REVALIDATED", label: "Policy revalidated" },
   { event: "ACTION_VALIDATED", label: "Action validated" },
   { event: "ACTION_BLOCKED", label: "Action blocked" },
-  { event: "ACTION_EXECUTED", label: "Action executed (simulated)" },
+  { event: "ACTION_EXECUTED", label: "Simulated execution" },
   { event: "OUTCOME_OBSERVED", label: "Outcome observed" },
-  { event: "CASE_CLOSED", label: "Case closed" },
+  { event: "CASE_CLOSED", label: "Audit written" },
   { event: "AGENT_STOPPED", label: "Stopped" },
   { event: "AGENT_ESCALATED", label: "Escalated" },
 ];
+
+function hasTrace(
+  trace: Array<{ event_type: string }>,
+  event: string,
+): boolean {
+  return trace.some((row) => row.event_type === event);
+}
 
 export function AgentWorkbench({
   detail,
@@ -168,20 +176,20 @@ export function AgentWorkbench({
         </p>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-              Expected incremental recovery
-            </dt>
-            <dd className="mt-1 font-mono text-xl tabular">
+            <dd className="figure text-xl font-medium">
               {ev == null ? "—" : formatPaiseINR(ev)}
             </dd>
+            <dt className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+              Expected incremental recovery
+            </dt>
           </div>
           <div>
-            <dt className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-              Estimated intervention lift
-            </dt>
-            <dd className="mt-1 font-mono text-xl tabular">
+            <dd className="figure text-xl font-medium">
               {lift == null ? "—" : formatLiftPp(lift)}
             </dd>
+            <dt className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+              Estimated intervention lift
+            </dt>
           </div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -244,7 +252,31 @@ export function AgentWorkbench({
           {busy === "execute" ? "Running…" : "Run simulated recovery"}
         </button>
         {execution ? (
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-4">
+            {hasTrace(execution.trace, "POLICY_EVALUATED") &&
+            hasTrace(execution.trace, "POLICY_REVALIDATED") ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md border border-line bg-surface-elevated px-3 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+                    Plan-time policy
+                  </p>
+                  <p className="mt-1 text-sm">
+                    Action selected under the policy that existed when planning.
+                  </p>
+                </div>
+                <div className="rounded-md border border-attention/25 bg-amber-soft/40 px-3 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-attention">
+                    Execution-time revalidation
+                  </p>
+                  <p className="mt-1 text-sm">
+                    The world may change between deciding and acting.
+                    {execution.stop_reason
+                      ? ` Stopped: ${execution.stop_reason.replaceAll("_", " ")}.`
+                      : " Revalidated immediately before simulated execution."}
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <p className="text-sm">
               Status {execution.status}
               {execution.validated_action
@@ -253,24 +285,53 @@ export function AgentWorkbench({
               {execution.stop_reason ? ` · stop ${execution.stop_reason}` : ""}
             </p>
             {execution.action?.outcome ? (
-              <p className="font-mono text-sm">
+              <p className="figure text-sm">
                 Outcome {execution.action.outcome}
                 {execution.action.amount_recovered_paise
                   ? ` · ${formatPaiseINR(execution.action.amount_recovered_paise)}`
                   : ""}
+                {execution.action.outcome === "success" ? (
+                  <span className="ml-2">
+                    <StatusBadge tone="good">Recovery succeeded</StatusBadge>
+                  </span>
+                ) : null}
               </p>
             ) : null}
             <ol className="mt-3 space-y-0">
-              <li className="text-sm">Observed case</li>
-              {TRACE_STEPS.filter((step) =>
-                execution.trace.some((row) => row.event_type === step.event),
-              ).map((step) => (
-                <li key={step.event} className="text-sm">
-                  <span className="block text-ink-soft">↓</span>
+              {[
+                { key: "observed", label: "Observed", event: null as string | null },
+                {
+                  key: "collectibility",
+                  label: "Collectibility confirmed",
+                  event: null,
+                },
+                ...TRACE_STEPS.filter((step) =>
+                  execution.trace.some((row) => row.event_type === step.event),
+                ).map((step) => ({
+                  key: step.event,
+                  label: step.label,
+                  event: step.event as string | null,
+                })),
+                ...(hasTrace(execution.trace, "CASE_CLOSED")
+                  ? []
+                  : [{ key: "audit-written", label: "Audit written", event: null }]),
+              ].map((step, index) => (
+                <li
+                  key={step.key}
+                  className="ad-stagger text-sm"
+                  style={{ animationDelay: `${index * 70}ms` }}
+                >
+                  {index > 0 ? (
+                    <span className="block text-ink-soft" aria-hidden="true">
+                      ↓
+                    </span>
+                  ) : null}
                   {step.label}
-                  <span className="ml-2 font-mono text-[11px] text-ink-soft">
-                    {step.event}
-                  </span>
+                  {step.event ? (
+                    <span className="ml-2 font-mono text-[11px] text-ink-soft">
+                      {step.event}
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ol>

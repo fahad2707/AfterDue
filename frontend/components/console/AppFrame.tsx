@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 
+import { BrandMark } from "@/components/console/BrandMark";
 import { PRIMARY_NAV } from "@/components/console/NavLinks";
 import { ProductTour } from "@/components/tour/ProductTour";
 import { UsageGuide } from "@/components/tour/UsageGuide";
@@ -90,22 +91,19 @@ export function AppFrame({
   return (
     <div className="relative min-h-screen">
       <div
-        className={`min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)] ${
+        className={`min-h-screen lg:grid lg:grid-cols-[272px_minmax(0,1fr)] ${
           storyOpen ? "pointer-events-none" : ""
         }`}
       >
         <aside className="bg-forest-deep text-paper-raised">
-          <div className="flex h-full flex-col px-5 py-6">
+          <div className="flex h-full flex-col px-6 py-7">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/45">
+              <BrandMark size="sidebar" tagline />
+              <p className="mt-5 text-[10px] uppercase tracking-[0.14em] text-white/35">
                 Razorpay AI Buildathon · Track 03
               </p>
-              <p className="mt-3 text-lg font-medium tracking-tight">AfterDue</p>
-              <p className="mt-1 text-xs leading-5 text-white/60">
-                Post-halt revenue intelligence for subscriptions.
-              </p>
             </div>
-            <nav className="mt-10 flex flex-col gap-1" aria-label="Primary">
+            <nav className="mt-12 flex flex-col gap-1" aria-label="Primary">
               {PRIMARY_NAV.map((item) => {
                 const active =
                   item.href === "/"
@@ -116,7 +114,7 @@ export function AppFrame({
                     key={item.href}
                     href={withRun(item.href, runId)}
                     data-guide={guideId(item.href)}
-                    className={`rounded-md px-2.5 py-2 text-sm transition-colors ${
+                    className={`rounded-sm px-2.5 py-2 text-sm transition-colors ${
                       active
                         ? "bg-white/10 text-white"
                         : "text-white/65 hover:bg-white/5 hover:text-white"
@@ -127,13 +125,13 @@ export function AppFrame({
                 );
               })}
             </nav>
-            <div className="mt-8 border-t border-white/10 pt-4">
+            <div className="mt-10 border-t border-white/10 pt-5">
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-white/40">
                 More
               </p>
               <Link
                 href={withRun("/architecture", runId)}
-                className={`block rounded-md px-2.5 py-2 text-sm ${
+                className={`block rounded-sm px-2.5 py-2 text-sm ${
                   pathname.startsWith("/architecture")
                     ? "bg-white/10 text-white"
                     : "text-white/65 hover:bg-white/5 hover:text-white"
@@ -144,14 +142,14 @@ export function AppFrame({
               <button
                 type="button"
                 onClick={replayGuide}
-                className="mt-1 w-full rounded-md px-2.5 py-2 text-left text-sm text-white/65 hover:bg-white/5 hover:text-white"
+                className="mt-1 w-full rounded-sm px-2.5 py-2 text-left text-sm text-white/65 hover:bg-white/5 hover:text-white"
               >
                 How to use AfterDue
               </button>
               <button
                 type="button"
                 onClick={replayTour}
-                className="mt-1 w-full rounded-md px-2.5 py-2 text-left text-sm text-white/65 hover:bg-white/5 hover:text-white"
+                className="mt-1 w-full rounded-sm px-2.5 py-2 text-left text-sm text-white/65 hover:bg-white/5 hover:text-white"
               >
                 Replay product tour
               </button>
@@ -160,7 +158,7 @@ export function AppFrame({
           </div>
         </aside>
         <div className="min-w-0">
-          <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">{children}</div>
+          <div className="mx-auto max-w-6xl px-5 py-10 sm:px-10 sm:py-12">{children}</div>
         </div>
       </div>
       {storyOpen ? <ProductTour onClose={closeTour} /> : null}

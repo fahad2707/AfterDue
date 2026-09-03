@@ -4,24 +4,31 @@ import type { PolicyDecision } from "@/types/api";
 
 export function PolicyPanel({ policy }: { policy: PolicyDecision }) {
   return (
-    <section className="rounded-lg border border-line bg-paper-raised p-5">
+    <section className="rounded-md border border-line bg-paper-raised p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
           What policy allows
         </h3>
-        <p className="font-mono text-xs">Version {policy.policy_version}</p>
+        <p className="font-mono text-xs text-ink-soft">Version {policy.policy_version}</p>
       </div>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
+        Policy is deterministic. Allowed and blocked actions are evaluated before
+        economics, then revalidated immediately before execution.
+      </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
             Allowed actions
           </p>
-          <ul className="mt-2 space-y-1 text-sm">
+          <ul className="mt-2 space-y-2 text-sm">
             {policy.allowed_actions.map((action) => (
-              <li key={action} className="flex items-center gap-2">
-                <StatusBadge tone="good">Allowed</StatusBadge>
+              <li
+                key={action}
+                className="flex items-center justify-between gap-2 rounded-md border border-good/20 bg-good-soft/50 px-3 py-2"
+              >
                 <span className="capitalize">{actionLabel(action)}</span>
+                <StatusBadge tone="good">Allowed</StatusBadge>
               </li>
             ))}
           </ul>
@@ -35,9 +42,12 @@ export function PolicyPanel({ policy }: { policy: PolicyDecision }) {
               <li className="text-ink-soft">None</li>
             ) : (
               policy.blocked_actions.map((action) => (
-                <li key={action} className="flex items-center gap-2">
-                  <StatusBadge tone="stop">Blocked</StatusBadge>
+                <li
+                  key={action}
+                  className="flex items-center justify-between gap-2 rounded-md border border-stop/20 bg-stop-soft/70 px-3 py-2"
+                >
                   <span className="capitalize">{actionLabel(action)}</span>
+                  <StatusBadge tone="stop">Blocked</StatusBadge>
                 </li>
               ))
             )}

@@ -24,7 +24,7 @@ export default function ArchitecturePage() {
         {steps.map(([title, body], index) => (
           <li
             key={title}
-            className="grid gap-2 rounded-lg border border-line bg-paper-raised px-4 py-3 sm:grid-cols-[160px_minmax(0,1fr)]"
+            className="grid gap-2 rounded-md border border-line bg-paper-raised px-4 py-3 sm:grid-cols-[160px_minmax(0,1fr)]"
           >
             <p className="font-mono text-[11px] text-ink-soft">
               {String(index + 1).padStart(2, "0")} {title}

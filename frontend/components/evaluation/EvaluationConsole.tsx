@@ -23,8 +23,8 @@ function Card({
 }) {
   return (
     <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">{label}</p>
-      <p className="mt-2 font-mono text-2xl tabular tracking-tight text-ink">{value}</p>
+      <p className="figure text-2xl font-medium tracking-tight text-ink">{value}</p>
+      <p className="mt-1.5 text-[11px] uppercase tracking-[0.14em] text-ink-soft">{label}</p>
       {hint ? <p className="mt-1 text-xs text-ink-soft">{hint}</p> : null}
     </div>
   );
@@ -32,6 +32,16 @@ function Card({
 
 function rowsOf(report: EvaluationReport): EvaluationStrategyRow[] {
   return ORDER.map((key) => report.strategies[key]).filter(Boolean);
+}
+
+function gatedTie(report: EvaluationReport): boolean {
+  const gated = ["naive", "rule_based", "reclaim"]
+    .map((key) => report.strategies[key])
+    .filter((row): row is EvaluationStrategyRow => Boolean(row));
+  return (
+    gated.length >= 2 &&
+    gated.every((row) => row.net_recovered_paise === gated[0].net_recovered_paise)
+  );
 }
 
 export function EvaluationConsole() {
@@ -72,14 +82,24 @@ export function EvaluationConsole() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-            Benchmark
+            Controlled experiment
           </p>
-          <h2 className="mt-2 text-3xl font-medium tracking-tight">Evaluation</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
+          <h2 className="mt-2.5 text-3xl font-medium tracking-tight">Evaluation</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-ink-soft">
             Compare Naive (ungated historical unpaid), Rule-based and AfterDue
             (collectibility-gated), and an expected-value oracle. Synthetic
-            outcomes only.
+            outcomes only. The world is not retuned so AfterDue wins.
           </p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {["Same world", "Same policy", "Same oracle", "Same budget"].map((item) => (
+              <li
+                key={item}
+                className="rounded-sm border border-line bg-sand/60 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-ink-soft"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
         <SyntheticBadge />
       </header>
@@ -136,7 +156,26 @@ export function EvaluationConsole() {
             <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
               Benchmark summary
             </h3>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {gatedTie(report) ? (
+              <p className="mb-3 rounded-md border border-line bg-sand/50 px-3 py-2 text-sm">
+                Naive, Rule-based, and AfterDue recovered the same amount on this
+                run. That is a real result, not a missing winner.
+              </p>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {["naive", "rule_based", "reclaim"].map((key) => {
+                const row = report.strategies[key];
+                return (
+                  <Card
+                    key={key}
+                    label={strategyLabel(key)}
+                    value={formatPaiseINR(row?.net_recovered_paise ?? 0)}
+                    hint="Net recovered"
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Card
                 label="Historical unpaid"
                 value={formatPaiseINR(report.population.historical_unpaid_paise)}
@@ -146,14 +185,9 @@ export function EvaluationConsole() {
                 value={formatPaiseINR(report.population.collectible_paise)}
               />
               <Card
-                label="Net recovered"
-                value={formatPaiseINR(reclaim?.net_recovered_paise ?? 0)}
-                hint="AfterDue, after intervention cost"
-              />
-              <Card
                 label="Incremental recovered"
                 value={formatPaiseINR(reclaim?.incremental_recovered_paise ?? 0)}
-                hint="Versus no intervention"
+                hint="AfterDue versus no intervention"
               />
               <Card
                 label="Invalid debt avoided"
@@ -240,19 +274,21 @@ function NetRecoveredBars({ report }: { report: EvaluationReport }) {
       <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
         Recovery performance
       </h3>
-      <p className="mt-1 text-sm text-ink-soft">Net recovered rupees (collectible minus cost).</p>
+      <p className="mt-1 text-sm text-ink-soft">
+        Net recovered rupees (collectible minus cost). Equal bars mean a tie.
+      </p>
       <div className="mt-4 space-y-3">
         {rows.map((row) => (
           <div key={row.strategy_name}>
             <div className="mb-1 flex items-baseline justify-between gap-3">
               <span className="text-sm font-medium">{strategyLabel(row.strategy_name)}</span>
-              <span className="font-mono text-sm tabular">
+              <span className="figure text-sm">
                 {formatPaiseINR(row.net_recovered_paise)}
               </span>
             </div>
-            <div className="h-2 rounded-sm bg-sand">
+            <div className="h-1.5 rounded-sm bg-sand">
               <div
-                className="h-2 rounded-sm bg-forest"
+                className="h-1.5 rounded-sm bg-ink-soft/50"
                 style={{ width: `${Math.max(6, (row.net_recovered_paise / max) * 100)}%` }}
               />
             </div>

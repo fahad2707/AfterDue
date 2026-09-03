@@ -2,6 +2,7 @@ import { AgentWorkbench } from "@/components/cases/AgentWorkbench";
 import { AuditTimeline } from "@/components/cases/AuditTimeline";
 import { BacklogTable } from "@/components/cases/BacklogTable";
 import { CollectibilityPanel } from "@/components/cases/CollectibilityPanel";
+import { DecisionPipeline } from "@/components/cases/DecisionPipeline";
 import { LifecycleTimeline } from "@/components/cases/LifecycleTimeline";
 import { ModelPanel } from "@/components/cases/ModelPanel";
 import { PolicyPanel } from "@/components/cases/PolicyPanel";
@@ -23,70 +24,83 @@ export function CaseDetailView({
   const name = detail.customer_name || row.customer_name || row.customer_id;
   const historical = row.historical_unpaid_amount_paise ?? row.backlog_amount_paise;
   const collectible = row.collectible_amount_paise ?? row.backlog_amount_paise;
+  const review = row.review_required_amount_paise ?? 0;
+  const excluded = row.not_collectible_amount_paise ?? 0;
+  const analysis = detail.model_analysis ?? row.model_analysis;
 
   return (
     <div className="space-y-8">
       <header>
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-soft">
-          Recovery case
+          Post-halt recovery case
         </p>
-        <h2 className="mt-2 text-3xl font-medium tracking-tight">{name}</h2>
-        <p className="mt-1 font-mono text-xs text-ink-soft">{row.subscription_id}</p>
+        <h2 className="mt-2.5 text-3xl font-medium tracking-tight">{name}</h2>
+        <p className="mt-2 font-mono text-xs text-ink-soft">{row.subscription_id}</p>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-line bg-paper-raised px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Historical unpaid
-          </p>
-          <p className="mt-2 font-medium text-2xl tabular">
+        <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
+          <p className="figure text-2xl font-medium tracking-tight">
             {formatPaiseINR(historical)}
           </p>
-        </div>
-        <div className="rounded-lg border border-forest/30 bg-paper-raised px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Collectible
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+            Historical unpaid
           </p>
-          <p className="mt-2 font-medium text-2xl tabular">
+        </div>
+        <div className="rounded-md border border-good/25 bg-good-soft/60 px-4 py-4">
+          <p className="figure text-2xl font-medium tracking-tight text-good">
             {formatPaiseINR(collectible)}
           </p>
-          <p className="mt-1 text-xs text-ink-soft">
-            Only this amount enters recovery optimization
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+            Collectible
+          </p>
+          <p className="mt-1 text-xs text-ink-soft">Only this amount enters optimization</p>
+        </div>
+        <div className="rounded-md border border-attention/20 bg-amber-soft/50 px-4 py-4">
+          <p className="figure text-2xl font-medium tracking-tight">
+            {formatPaiseINR(review)}
+          </p>
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+            Review required
           </p>
         </div>
-        <div className="rounded-lg border border-line bg-paper-raised px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Subscription
+        <div className="rounded-md border border-line bg-excluded-soft px-4 py-4">
+          <p className="figure text-2xl font-medium tracking-tight text-excluded">
+            {formatPaiseINR(excluded)}
           </p>
-          <p className="mt-2 text-lg font-medium uppercase">
-            {detail.subscription_status || "—"}
-          </p>
-          <p className="mt-1 text-xs text-ink-soft">
-            Halted {formatDate(row.halted_at)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-line bg-paper-raised px-4 py-4">
-          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
-            Recovery window
-          </p>
-          <div className="mt-2">
-            <StatusBadge
-              tone={
-                row.status === "review_required"
-                  ? "attention"
-                  : row.status === "closed"
-                    ? "good"
-                    : "info"
-              }
-            >
-              {row.status.replaceAll("_", " ")}
-            </StatusBadge>
-          </div>
-          <p className="mt-2 text-xs text-ink-soft">
-            Simulated recovery is available below. No real payment is attempted.
+          <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+            Excluded
           </p>
         </div>
       </section>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-paper-raised px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+          Subscription {detail.subscription_status || "—"}
+        </p>
+        <p className="text-xs text-ink-soft">Halted {formatDate(row.halted_at)}</p>
+        <StatusBadge
+          tone={
+            row.status === "review_required"
+              ? "attention"
+              : row.status === "closed"
+                ? "good"
+                : "info"
+          }
+        >
+          {row.status.replaceAll("_", " ")}
+        </StatusBadge>
+        <p className="text-xs text-ink-soft">
+          Simulated recovery is available below. No real payment is attempted.
+        </p>
+      </div>
+
+      <DecisionPipeline
+        caseRow={row}
+        policy={detail.policy}
+        analysis={analysis}
+        audit={audit}
+      />
 
       <WhyThisCase caseRow={row} policy={detail.policy} />
 
@@ -117,7 +131,7 @@ export function CaseDetailView({
 
       <CollectibilityPanel caseRow={row} invoices={detail.invoices} />
       <PolicyPanel policy={detail.policy} />
-      <ModelPanel analysis={detail.model_analysis ?? row.model_analysis} />
+      <ModelPanel analysis={analysis} />
       <AgentWorkbench detail={detail} />
 
       <section>

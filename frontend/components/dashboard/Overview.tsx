@@ -40,60 +40,60 @@ export function Overview({ data }: { data: DashboardSummary }) {
         <SyntheticBadge />
       </div>
 
-      <section data-guide="overview-metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard label="Historical unpaid" value={formatPaiseINR(historical)} />
-        <MetricCard
-          label="Collectible"
-          value={formatPaiseINR(collectible)}
-          hint="Only this amount is eligible for recovery optimization"
-          emphasize
-        />
-        <MetricCard label="Review required" value={formatPaiseINR(review)} />
-        <MetricCard
-          label="Excluded / not collectible"
-          value={formatPaiseINR(excluded)}
-          hint="Not lost revenue — service was not a valid receivable"
-        />
-        <MetricCard
-          label="Recovery cases"
-          value={formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
-        />
-        <MetricCard
-          label="Recovered revenue"
-          value={recovered ? formatPaiseINR(recovered) : "—"}
-          hint={
-            afterDue
-              ? "AfterDue on this run"
-              : data.best_baseline_name
-                ? strategyLabel(data.best_baseline_name)
-                : "Run strategies on Simulation"
-          }
-          emphasize={Boolean(recovered)}
-        />
+      <section data-guide="overview-metrics">
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft">
+          Leftover revenue funnel
+        </h3>
+        <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-soft">
+          Raw historical unpaid is not recoverable opportunity. Review and excluded
+          amounts leave the funnel before optimization.
+        </p>
+        <div className="mt-4 grid gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Historical unpaid" value={formatPaiseINR(historical)} />
+          <MetricCard
+            label="Collectible"
+            value={formatPaiseINR(collectible)}
+            hint="Eligible for recovery optimization"
+            tone="good"
+            emphasize
+          />
+          <MetricCard
+            label="Review required"
+            value={formatPaiseINR(review)}
+            hint="Not collectible yet"
+            tone="attention"
+          />
+          <MetricCard
+            label="Excluded"
+            value={formatPaiseINR(excluded)}
+            hint="Not a valid receivable"
+            tone="excluded"
+          />
+        </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-paper-raised px-4 py-4">
+      <section className="rounded-md border border-line bg-paper-raised px-4 py-4">
         <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft">
           What AfterDue is doing right now
         </h3>
         <dl className="mt-3 grid gap-3 sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-ink-soft">Collectible cases in queue</dt>
-            <dd className="mt-1 font-medium tabular">
+            <dd className="figure text-lg font-medium">
               {formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
             </dd>
+            <dt className="mt-1 text-xs text-ink-soft">Collectible cases in queue</dt>
           </div>
           <div>
-            <dt className="text-xs text-ink-soft">Review-required cases</dt>
-            <dd className="mt-1 font-medium tabular">
+            <dd className="figure text-lg font-medium">
               {formatCount(data.review_required_case_count ?? 0)}
             </dd>
+            <dt className="mt-1 text-xs text-ink-soft">Review-required cases</dt>
           </div>
           <div>
-            <dt className="text-xs text-ink-soft">Interventions used</dt>
-            <dd className="mt-1 font-medium tabular">
+            <dd className="figure text-lg font-medium">
               {formatCount(used)} / {formatCount(data.intervention_budget)}
             </dd>
+            <dt className="mt-1 text-xs text-ink-soft">Interventions used</dt>
           </div>
         </dl>
         <p className="mt-3 text-sm text-ink-soft">
@@ -114,6 +114,21 @@ export function Overview({ data }: { data: DashboardSummary }) {
       />
 
       <section className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Recovery cases"
+          value={formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
+        />
+        <MetricCard
+          label="Recovered revenue"
+          value={recovered ? formatPaiseINR(recovered) : "—"}
+          hint={
+            afterDue
+              ? "AfterDue on this run"
+              : data.best_baseline_name
+                ? strategyLabel(data.best_baseline_name)
+                : "Run strategies on Simulation"
+          }
+        />
         <MetricCard
           label="Intervention budget"
           value={formatCount(data.intervention_budget)}

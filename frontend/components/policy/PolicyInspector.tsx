@@ -17,7 +17,7 @@ export function PolicyInspector({ config }: { config: PolicyConfig }) {
         {config.rules.map((rule) => (
           <article
             key={rule.rule_id}
-            className="rounded-lg border border-line bg-paper-raised p-5"
+            className="rounded-md border border-line bg-paper-raised p-5"
             data-testid="policy-rule"
             data-provenance={rule.provenance}
           >

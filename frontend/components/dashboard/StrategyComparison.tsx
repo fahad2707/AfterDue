@@ -11,6 +11,12 @@ export function StrategyComparison({
 }) {
   const rows = ORDER.map((key) => results[key]).filter(Boolean);
   const max = Math.max(...rows.map((row) => row.revenue_recovered_paise), 1);
+  const comparable = rows.filter((row) => row.strategy_name !== "oracle");
+  const tied =
+    comparable.length >= 2 &&
+    comparable.every(
+      (row) => row.revenue_recovered_paise === comparable[0].revenue_recovered_paise,
+    );
 
   return (
     <section data-testid="strategy-comparison">
@@ -18,9 +24,14 @@ export function StrategyComparison({
         Strategy comparison
       </h3>
       <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-        Different decision strategies produce different recovery economics on the
-        same synthetic world, policy, budget, and oracle.
+        Same synthetic world, same policy, same oracle, same budget. Bars use a
+        shared scale — equal recovered amounts render as a tie, not a win.
       </p>
+      {tied ? (
+        <p className="mt-2 text-sm text-ink">
+          Naive, Rule-based, and AfterDue recovered the same amount on this run.
+        </p>
+      ) : null}
 
       <div className="mt-4 space-y-3">
         {rows.map((row) => {
@@ -35,9 +46,9 @@ export function StrategyComparison({
                   {formatPaiseINR(row.revenue_recovered_paise)}
                 </span>
               </div>
-              <div className="h-2 rounded-sm bg-sand">
+              <div className="h-1.5 rounded-sm bg-sand">
                 <div
-                  className="h-2 rounded-sm bg-forest"
+                  className="h-1.5 rounded-sm bg-ink-soft/50"
                   style={{ width: `${width}%` }}
                 />
               </div>

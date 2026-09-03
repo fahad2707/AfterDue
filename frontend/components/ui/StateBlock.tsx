@@ -40,7 +40,7 @@ export function SkeletonGrid({ rows = 3 }: { rows?: number }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-24 animate-pulse rounded-md bg-sand/70" />
+        <div key={i} className="h-24 animate-pulse rounded-md bg-sand/70 motion-reduce:animate-none" />
       ))}
     </div>
   );

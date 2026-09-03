@@ -16,7 +16,7 @@ export function WhyThisCase({
   });
 
   return (
-    <section className="rounded-lg border border-line bg-sand/40 p-5">
+    <section className="rounded-md border border-line bg-paper-raised p-5">
       <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
         Why this case exists
       </h3>

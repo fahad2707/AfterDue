@@ -40,14 +40,14 @@ export default async function CasesPage({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         eyebrow={
           result.data.some((row) => row.model_analysis)
             ? "Sorted by expected incremental recovery"
             : "Sorted by collectible amount"
         }
-        title="Recovery cases"
+        title="Recovery Cases"
         body="Historical unpaid is not collectible revenue. Ranking uses expected incremental recovery when a model exists. Policy still decides which actions are eligible. Estimates are synthetic."
       />
       {result.data.length === 0 ? (

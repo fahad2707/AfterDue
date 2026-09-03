@@ -88,7 +88,7 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-soft">
           Simulated execution
         </p>
-        <h2 className="mt-2 text-3xl font-medium tracking-tight">Simulation</h2>
+        <h2 className="mt-2.5 text-3xl font-medium tracking-tight">Simulation</h2>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <SyntheticBadge />
           <p className="text-sm text-ink-soft">
@@ -162,28 +162,28 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
             <div>
-              <dt className="text-xs text-ink-soft">Collectible cases</dt>
-              <dd className="font-mono text-lg">
+              <dd className="figure text-lg font-medium">
                 {formatCount(
                   world.collectible_recovery_case_count ?? world.recovery_case_count,
                 )}
               </dd>
+              <dt className="mt-1 text-xs text-ink-soft">Collectible cases</dt>
             </div>
             <div>
-              <dt className="text-xs text-ink-soft">Collectible receivables</dt>
-              <dd className="font-mono text-lg">
+              <dd className="figure text-lg font-medium">
                 {formatPaiseINR(
                   world.collectible_amount_paise ?? world.revenue_at_risk_paise,
                 )}
               </dd>
+              <dt className="mt-1 text-xs text-ink-soft">Collectible receivables</dt>
             </div>
             <div>
-              <dt className="text-xs text-ink-soft">Historical unpaid</dt>
-              <dd className="font-mono text-lg">
+              <dd className="figure text-lg font-medium">
                 {formatPaiseINR(
                   world.historical_unpaid_amount_paise ?? world.revenue_at_risk_paise,
                 )}
               </dd>
+              <dt className="mt-1 text-xs text-ink-soft">Historical unpaid</dt>
             </div>
           </dl>
           <p className="mt-4 text-xs text-ink-soft">

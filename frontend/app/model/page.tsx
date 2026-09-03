@@ -15,8 +15,8 @@ function num(value: unknown): string {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.12em] text-ink-soft">{label}</p>
-      <p className="mt-2 font-mono text-lg tabular">{value}</p>
+      <p className="figure text-lg font-medium">{value}</p>
+      <p className="mt-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-soft">{label}</p>
     </div>
   );
 }
@@ -55,7 +55,7 @@ export default async function ModelPage() {
         body="The model estimates what is likely to happen with and without intervention on collectible debt. Diagnostics below measure calibration, not certainty. All results are synthetic."
       />
 
-      <section className="rounded-lg border border-line bg-paper-raised px-4 py-5">
+      <section className="rounded-md border border-line bg-paper-raised px-4 py-5">
         <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
           Business estimate
         </h3>

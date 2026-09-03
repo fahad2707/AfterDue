@@ -17,35 +17,70 @@ export function RevenueFunnel({
   interventions: number;
   recovered: number;
 }) {
-  const spine = [
-    { label: "Historical unpaid", value: formatPaiseINR(historicalUnpaid), hint: "Invoice lineage after halt" },
-    { label: "Collectible", value: formatPaiseINR(collectible), hint: "Service delivered" },
-    { label: "Selected for intervention", value: formatCount(interventions), hint: `${formatCount(cases)} collectible cases` },
-    { label: "Recovered", value: formatPaiseINR(recovered), hint: "Simulated, collectible only" },
-  ];
-
   return (
     <section>
       <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft">
         How leftover revenue is treated
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-        Historical unpaid is not collectible revenue. Review {formatPaiseINR(reviewRequired)}{" "}
-        and excluded {formatPaiseINR(excluded)} never enter optimization.
+        Historical unpaid is reconstructed first. Collectibility then splits the
+        total: recoverable opportunity, merchant review, and excluded non-receivables.
       </p>
-      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {spine.map((step, index) => (
-          <li
-            key={step.label}
-            className="rounded-lg border border-line bg-paper-raised px-3 py-3"
-          >
-            <p className="font-mono text-[10px] text-ink-soft">{index + 1}</p>
-            <p className="mt-2 text-xs text-ink-soft">{step.label}</p>
-            <p className="mt-1 font-medium text-lg tabular text-ink">{step.value}</p>
-            <p className="mt-1 text-[11px] text-ink-soft">{step.hint}</p>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <ol className="space-y-2">
+          <li className="rounded-md border border-line bg-paper-raised px-4 py-4">
+            <p className="figure text-2xl font-medium tracking-tight">
+              {formatPaiseINR(historicalUnpaid)}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+              Historical unpaid
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">Invoice lineage after halt</p>
           </li>
-        ))}
-      </ol>
+          <li className="rounded-md border border-good/25 bg-good-soft/70 px-4 py-4">
+            <p className="figure text-2xl font-medium tracking-tight text-good">
+              {formatPaiseINR(collectible)}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+              Collectible
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">
+              {formatCount(cases)} collectible cases · {formatCount(interventions)} selected
+            </p>
+          </li>
+          <li className="rounded-md border border-forest/25 bg-paper-raised px-4 py-4">
+            <p className="figure text-2xl font-medium tracking-tight">
+              {formatPaiseINR(recovered)}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+              Recovered
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">Simulated, collectible only</p>
+          </li>
+        </ol>
+        <div className="space-y-2">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+            Leaves the funnel
+          </p>
+          <div className="rounded-md border border-attention/20 bg-amber-soft/50 px-4 py-4">
+            <p className="figure text-xl font-medium">{formatPaiseINR(reviewRequired)}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+              Review required
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">Not collectible yet</p>
+          </div>
+          <div className="rounded-md border border-line bg-excluded-soft px-4 py-4">
+            <p className="figure text-xl font-medium text-excluded">
+              {formatPaiseINR(excluded)}
+            </p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.12em] text-ink-soft">
+              Excluded
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">Not a valid receivable</p>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

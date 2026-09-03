@@ -106,19 +106,19 @@ export function CaseTable({
                     View case details
                   </p>
                 </td>
-                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
+                <td className="px-3 py-3 text-right align-middle figure whitespace-nowrap">
                   {formatPaiseINR(historical)}
                 </td>
-                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
+                <td className="px-3 py-3 text-right align-middle figure whitespace-nowrap">
                   {formatPaiseINR(collectible)}
                 </td>
-                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
+                <td className="px-3 py-3 text-right align-middle figure whitespace-nowrap">
                   {formatPaiseINR(review)}
                 </td>
-                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
+                <td className="px-3 py-3 text-right align-middle figure whitespace-nowrap">
                   {analysis ? formatLiftPp(analysis.estimated_uplift) : "—"}
                 </td>
-                <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
+                <td className="px-3 py-3 text-right align-middle figure whitespace-nowrap">
                   {analysis
                     ? formatPaiseINR(analysis.expected_incremental_recovery_paise)
                     : "—"}

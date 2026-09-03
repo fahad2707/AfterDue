@@ -45,7 +45,7 @@ export function BacklogTable({
               <td className="px-3 py-2.5 whitespace-nowrap">
                 {formatMonth(invoice.period_start)}
               </td>
-              <td className="px-3 py-2.5 text-right font-mono tabular whitespace-nowrap">
+              <td className="px-3 py-2.5 text-right figure whitespace-nowrap">
                 {formatPaiseINR(invoice.amount_paise)}
               </td>
               <td className="px-3 py-2.5 capitalize">
@@ -67,7 +67,7 @@ export function BacklogTable({
             <td className="px-4 py-3 text-sm font-medium" colSpan={2}>
               Historical unpaid
             </td>
-            <td className="px-3 py-3 text-right font-mono tabular whitespace-nowrap">
+            <td className="px-3 py-3 text-right figure whitespace-nowrap">
               {formatPaiseINR(historical)}
             </td>
             <td colSpan={3} />
@@ -77,7 +77,7 @@ export function BacklogTable({
               <td className="px-4 py-3 text-sm font-medium" colSpan={2}>
                 Collectible (enters optimization)
               </td>
-              <td className="px-3 py-3 text-right font-mono tabular whitespace-nowrap">
+              <td className="px-3 py-3 text-right figure whitespace-nowrap">
                 {formatPaiseINR(collectibleTotal)}
               </td>
               <td colSpan={3} />
