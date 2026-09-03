@@ -51,6 +51,8 @@ describe("CaseTable", () => {
     expect(html).toContain("₹4,999");
     expect(html).toContain("Manual charge blocked");
     expect(html).toContain("whitespace-nowrap");
-    expect(html).not.toContain("Expected incremental recovery");
+    expect(html).toContain("View case details");
+    expect(html).toContain("case-row-link");
+    expect(html).toContain("/cases/case_1");
   });
 });

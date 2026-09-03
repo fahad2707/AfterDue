@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { CaseTable } from "@/components/cases/CaseTable";
+import { PageHeader } from "@/components/ui/MetricCard";
 import { EmptyState, ErrorState } from "@/components/ui/StateBlock";
+import { withRun } from "@/lib/run";
 import { apiGet } from "@/lib/server-api";
 import { resolveRunId } from "@/lib/server-run";
-import { withRun } from "@/lib/run";
 import type { RecoveryCase } from "@/types/api";
 
 export default async function CasesPage({
@@ -40,19 +41,15 @@ export default async function CasesPage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-          {result.data.some((row) => row.model_analysis)
+      <PageHeader
+        eyebrow={
+          result.data.some((row) => row.model_analysis)
             ? "Sorted by expected incremental recovery"
-            : "Sorted by backlog"}
-        </p>
-        <h2 className="mt-2 text-3xl font-medium tracking-tight">Recovery cases</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-          Model ranking uses expected incremental recovery when an active
-          model exists. Policy still decides which actions are eligible.
-          Estimates are synthetic, not guaranteed recovery.
-        </p>
-      </header>
+            : "Sorted by collectible amount"
+        }
+        title="Recovery cases"
+        body="Historical unpaid is not collectible revenue. Ranking uses expected incremental recovery when a model exists. Policy still decides which actions are eligible. Estimates are synthetic."
+      />
       {result.data.length === 0 ? (
         <EmptyState
           title="No recovery cases in this run"

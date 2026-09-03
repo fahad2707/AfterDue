@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/MetricCard";
 import { ErrorState } from "@/components/ui/StateBlock";
 import { formatRatio } from "@/lib/format/money";
 import { apiGet } from "@/lib/server-api";
@@ -25,12 +26,10 @@ export default async function ModelPage() {
   if (!result.ok) {
     return (
       <div className="space-y-6">
-        <header>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-            Recovery model
-          </p>
-          <h2 className="mt-2 text-3xl font-medium tracking-tight">Model</h2>
-        </header>
+        <PageHeader
+          eyebrow="Recovery model"
+          title="Model"
+        />
         <ErrorState
           title="No active model"
           body="Train a recovery model with POST /api/model/train. The LLM layer is not part of this path."
@@ -50,17 +49,45 @@ export default async function ModelPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-          Engineering credibility
-        </p>
-        <h2 className="mt-2 text-3xl font-medium tracking-tight">Recovery model</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-          Per-action recovery probabilities trained on randomized synthetic
-          assignments. Used to estimate intervention lift and incremental
-          expected value. All results are synthetic.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Business estimate, then diagnostics"
+        title="Recovery model"
+        body="The model estimates what is likely to happen with and without intervention on collectible debt. Diagnostics below measure calibration, not certainty. All results are synthetic."
+      />
+
+      <section className="rounded-lg border border-line bg-paper-raised px-4 py-5">
+        <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
+          Business estimate
+        </h3>
+        <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm font-medium">Without intervention</dt>
+            <dd className="mt-1 text-sm leading-6 text-ink-soft">
+              Estimated recovery if AfterDue takes no action on a collectible
+              case.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium">With intervention</dt>
+            <dd className="mt-1 text-sm leading-6 text-ink-soft">
+              Estimated recovery under the selected allowed action.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium">Intervention lift</dt>
+            <dd className="mt-1 text-sm leading-6 text-ink-soft">
+              Difference in estimated recovery probability versus no action.
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium">Expected incremental recovery</dt>
+            <dd className="mt-1 text-sm leading-6 text-ink-soft">
+              Collectible amount × lift, minus action cost. These are estimates,
+              not guaranteed rupees.
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Metric label="Active model" value={model.model_type.replaceAll("_", " ")} />
@@ -75,7 +102,7 @@ export default async function ModelPage() {
 
       <section>
         <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Held-out classification
+          Model diagnostics · held-out classification
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Precision" value={num(metrics.precision)} />

@@ -7,7 +7,7 @@ export function ModelPanel({ analysis }: { analysis: ModelAnalysis | null | unde
     return (
       <section data-testid="recovery-model-panel">
         <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Recovery model
+          What the model estimates
         </h3>
         <p className="text-sm text-ink-soft">
           No active recovery model. Train one on the Model page. These figures
@@ -21,7 +21,7 @@ export function ModelPanel({ analysis }: { analysis: ModelAnalysis | null | unde
   return (
     <section data-testid="recovery-model-panel">
       <h3 className="mb-3 text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-        Recovery model
+        What the model estimates
       </h3>
       <p className="mb-4 max-w-2xl text-sm text-ink-soft">
         Model-estimated recovery and estimated intervention lift. Expected

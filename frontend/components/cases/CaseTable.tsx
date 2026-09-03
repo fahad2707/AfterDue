@@ -1,9 +1,17 @@
 import Link from "next/link";
 
+import { StatusBadge } from "@/components/ui/Badge";
 import { formatLiftPp, formatPaiseINR } from "@/lib/format/money";
 import { actionLabel, policyStatusLabel } from "@/lib/format/policy";
 import { withRun } from "@/lib/run";
 import type { RecoveryCase } from "@/types/api";
+
+function statusTone(status: string): "info" | "attention" | "good" | "neutral" {
+  if (status === "review_required") return "attention";
+  if (status === "open") return "info";
+  if (status === "closed") return "good";
+  return "neutral";
+}
 
 function hasAnalysis(row: RecoveryCase): boolean {
   return row.model_analysis != null && Number.isInteger(
@@ -44,17 +52,18 @@ export function CaseTable({
   });
 
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-paper-raised">
-      <table className="w-full min-w-[980px] table-fixed border-collapse text-left text-sm">
+    <div className="overflow-x-auto rounded-md border border-line bg-paper-raised" data-guide="case-table">
+      <table className="w-full min-w-[1040px] table-fixed border-collapse text-left text-sm">
         <colgroup>
-          <col className="w-[18%]" />
-          <col className="w-[12%]" />
+          <col className="w-[16%]" />
+          <col className="w-[11%]" />
+          <col className="w-[11%]" />
+          <col className="w-[9%]" />
+          <col className="w-[10%]" />
+          <col className="w-[13%]" />
           <col className="w-[12%]" />
           <col className="w-[10%]" />
-          <col className="w-[10%]" />
-          <col className="w-[14%]" />
-          <col className="w-[12%]" />
-          <col className="w-[12%]" />
+          <col className="w-[8%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-line bg-sand/40 text-[11px] uppercase tracking-[0.1em] text-ink-soft">
@@ -66,6 +75,7 @@ export function CaseTable({
             <th className="px-3 py-3 text-right font-medium">Incr. recovery</th>
             <th className="px-3 py-3 font-medium">Action</th>
             <th className="px-4 py-3 font-medium">Policy</th>
+            <th className="px-3 py-3 font-medium">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -74,17 +84,26 @@ export function CaseTable({
             const historical = row.historical_unpaid_amount_paise ?? row.backlog_amount_paise;
             const collectible = row.collectible_amount_paise ?? row.backlog_amount_paise;
             const review = row.review_required_amount_paise ?? 0;
+            const name = row.customer_name || row.customer_id;
+            const href = withRun(`/cases/${row.case_id}`, runId);
             return (
-              <tr key={row.case_id} className="border-b border-line/70 last:border-b-0">
+              <tr
+                key={row.case_id}
+                className="case-row group cursor-pointer border-b border-line/70 last:border-b-0 hover:bg-sand/70"
+              >
                 <td className="px-4 py-3 align-middle">
                   <Link
-                    href={withRun(`/cases/${row.case_id}`, runId)}
-                    className="block truncate font-medium text-ink hover:text-forest"
+                    href={href}
+                    className="case-row-link block truncate font-medium text-ink group-hover:text-forest"
+                    aria-label={`View recovery case details for ${name}`}
                   >
-                    {row.customer_name || row.customer_id}
+                    {name}
                   </Link>
-                  <p className="mt-0.5 truncate font-mono text-[11px] text-ink-soft">
+                  <p className="pointer-events-none relative z-[3] mt-0.5 truncate font-mono text-[11px] text-ink-soft">
                     {row.subscription_id}
+                  </p>
+                  <p className="pointer-events-none relative z-[3] mt-1 text-[11px] font-medium text-forest opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    View case details
                   </p>
                 </td>
                 <td className="px-3 py-3 text-right align-middle font-mono tabular whitespace-nowrap">
@@ -116,6 +135,11 @@ export function CaseTable({
                   <p className="mt-0.5 truncate text-[11px] leading-4 text-ink-soft">
                     {policyNote(row)}
                   </p>
+                </td>
+                <td className="px-3 py-3 align-middle">
+                  <StatusBadge tone={statusTone(row.status)}>
+                    {row.status.replaceAll("_", " ")}
+                  </StatusBadge>
                 </td>
               </tr>
             );

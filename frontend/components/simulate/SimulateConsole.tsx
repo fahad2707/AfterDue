@@ -85,15 +85,15 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
   return (
     <div className="space-y-8">
       <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-soft">
-          Synthetic laboratory
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-soft">
+          Simulated execution
         </p>
         <h2 className="mt-2 text-3xl font-medium tracking-tight">Simulation</h2>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <SyntheticBadge />
           <p className="text-sm text-ink-soft">
-            Synthetic environment. Results are illustrative and are not Razorpay
-            production statistics.
+            This is simulated execution, not production money movement. Results
+            are illustrative and are not Razorpay production statistics.
           </p>
         </div>
       </header>
@@ -157,7 +157,7 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
               onClick={() => void onRun()}
               className="rounded-sm bg-ink px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-paper-raised disabled:opacity-60"
             >
-              {busy === "run" ? "Running strategies…" : "Run Naive / Rule-based / RECLAIM"}
+              {busy === "run" ? "Running strategies…" : "Run Naive / Rule-based / AfterDue"}
             </button>
           </div>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -187,8 +187,7 @@ export function SimulateConsole({ initialRunId }: { initialRunId: string | null 
             </div>
           </dl>
           <p className="mt-4 text-xs text-ink-soft">
-            Synthetic environment. Results are illustrative and are not Razorpay
-            production statistics.
+            Simulated execution only. No real payment is attempted.
           </p>
         </section>
       ) : (

@@ -8,7 +8,7 @@ describe("provenanceLabel", () => {
       "Documented platform behavior",
     );
     expect(provenanceLabel("PRODUCT_DESIGN_ASSUMPTION")).toBe(
-      "Prototype policy assumption",
+      "Product design assumption",
     );
     expect(provenanceLabel("SAFETY_GUARDRAIL")).toBe("Safety guardrail");
   });

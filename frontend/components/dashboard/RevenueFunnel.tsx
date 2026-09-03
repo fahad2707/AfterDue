@@ -17,34 +17,32 @@ export function RevenueFunnel({
   interventions: number;
   recovered: number;
 }) {
-  const steps = [
-    { label: "Historical unpaid invoices", value: formatPaiseINR(historicalUnpaid) },
-    { label: "Collectible receivables", value: formatPaiseINR(collectible) },
-    { label: "Review required", value: formatPaiseINR(reviewRequired) },
-    { label: "Excluded / not collectible", value: formatPaiseINR(excluded) },
-    { label: "Collectible recovery cases", value: formatCount(cases) },
-    { label: "Interventions used", value: formatCount(interventions) },
-    { label: "Recovered revenue", value: formatPaiseINR(recovered) },
+  const spine = [
+    { label: "Historical unpaid", value: formatPaiseINR(historicalUnpaid), hint: "Invoice lineage after halt" },
+    { label: "Collectible", value: formatPaiseINR(collectible), hint: "Service delivered" },
+    { label: "Selected for intervention", value: formatCount(interventions), hint: `${formatCount(cases)} collectible cases` },
+    { label: "Recovered", value: formatPaiseINR(recovered), hint: "Simulated, collectible only" },
   ];
 
   return (
     <section>
-      <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-        Collectibility, then recovery
+      <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft">
+        How leftover revenue is treated
       </h3>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-        Invoice existence is not proof of collectibility. Excluded invoices are
-        not lost revenue — service was not a valid receivable for those periods.
+        Historical unpaid is not collectible revenue. Review {formatPaiseINR(reviewRequired)}{" "}
+        and excluded {formatPaiseINR(excluded)} never enter optimization.
       </p>
-      <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step, index) => (
+      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {spine.map((step, index) => (
           <li
             key={step.label}
-            className="rounded-md border border-line bg-paper-raised px-3 py-3"
+            className="rounded-lg border border-line bg-paper-raised px-3 py-3"
           >
             <p className="font-mono text-[10px] text-ink-soft">{index + 1}</p>
             <p className="mt-2 text-xs text-ink-soft">{step.label}</p>
-            <p className="mt-1 font-mono text-lg tabular text-ink">{step.value}</p>
+            <p className="mt-1 font-medium text-lg tabular text-ink">{step.value}</p>
+            <p className="mt-1 text-[11px] text-ink-soft">{step.hint}</p>
           </li>
         ))}
       </ol>

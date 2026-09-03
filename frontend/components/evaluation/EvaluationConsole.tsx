@@ -76,7 +76,7 @@ export function EvaluationConsole() {
           </p>
           <h2 className="mt-2 text-3xl font-medium tracking-tight">Evaluation</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-soft">
-            Compare Naive (ungated historical unpaid), Rule-based and RECLAIM
+            Compare Naive (ungated historical unpaid), Rule-based and AfterDue
             (collectibility-gated), and an expected-value oracle. Synthetic
             outcomes only.
           </p>
@@ -124,7 +124,7 @@ export function EvaluationConsole() {
         </div>
         <p className="mt-3 text-xs text-ink-soft">
           Budget scales at 25 slots per 100 subscribers (canonical ratio). 5,000+
-          runs can take a minute. The world is not retuned so RECLAIM wins.
+          runs can take a minute. The world is not retuned so AfterDue wins.
         </p>
       </section>
 
@@ -148,7 +148,7 @@ export function EvaluationConsole() {
               <Card
                 label="Net recovered"
                 value={formatPaiseINR(reclaim?.net_recovered_paise ?? 0)}
-                hint="RECLAIM, after intervention cost"
+                hint="AfterDue, after intervention cost"
               />
               <Card
                 label="Incremental recovered"
@@ -158,7 +158,7 @@ export function EvaluationConsole() {
               <Card
                 label="Invalid debt avoided"
                 value={formatPaiseINR(invalidAvoided)}
-                hint="Naive targeted this; RECLAIM did not"
+                hint="Naive targeted this; AfterDue did not"
               />
             </div>
           </section>
@@ -185,7 +185,7 @@ function StrategyTable({ report }: { report: EvaluationReport }) {
         Strategy comparison
       </h3>
       <p className="mt-1 max-w-3xl text-sm text-ink-soft">
-        Naive decides on ungated historical unpaid. Rule-based, RECLAIM, and
+        Naive decides on ungated historical unpaid. Rule-based, AfterDue, and
         the oracle decide only after collectibility. Oracle is not deployable.
       </p>
       <div className="mt-4 overflow-x-auto rounded-md border border-line bg-paper-raised">
@@ -292,7 +292,7 @@ function CollectibilityImpact({ report }: { report: EvaluationReport }) {
           </dd>
         </div>
         <div>
-          <dt className="text-ink-soft">RECLAIM invalid / uncertain targeted</dt>
+          <dt className="text-ink-soft">AfterDue invalid / uncertain targeted</dt>
           <dd className="font-mono tabular">
             {formatPaiseINR(reclaim?.incorrectly_targeted_paise ?? 0)}
           </dd>
@@ -446,10 +446,10 @@ function Diagnostics({ report }: { report: EvaluationReport }) {
         ))}
       </ul>
       <p className="mt-3 text-xs text-ink-soft">
-        Action agreement RECLAIM vs Rule-based:{" "}
+        Action agreement AfterDue vs Rule-based:{" "}
         {formatRatio(report.action_agreement.reclaim_vs_rule_based)}
         {report.intervals.reclaim?.incremental_recovered_paise
-          ? ` · RECLAIM incremental 95% bootstrap interval ${formatPaiseINR(
+          ? ` · AfterDue incremental 95% bootstrap interval ${formatPaiseINR(
               report.intervals.reclaim.incremental_recovered_paise.low,
             )}–${formatPaiseINR(report.intervals.reclaim.incremental_recovered_paise.high)}`
           : null}

@@ -1,26 +1,34 @@
-# RECLAIM
+# AfterDue
 
-**Recover the revenue that comes back with the customer.**
+**Post-halt revenue intelligence for subscriptions.**
 
-A post-halt subscription recovery agent: it reconstructs stranded invoices,
-estimates whether intervening is worth it, and executes **simulated** recovery
-under a deterministic policy. Built for Razorpay Buildathon Track 03.
+AfterDue reconstructs leftover unpaid invoices after a halted subscription
+returns to active, determines which debt is actually collectible, and
+identifies where intervention creates incremental recovery. Execution in
+this repository is **simulated**. Built for Razorpay AI Buildathon Track 03.
 
-> **SYNTHETIC SIMULATION — NOT PRODUCTION DATA.**
+AfterDue was previously developed under the internal codename **RECLAIM**.
+APIs, strategy IDs, environment variables, and Mongo collections still use
+`reclaim` where changing them would break evaluation or deployment.
+
+> **SYNTHETIC PROTOTYPE — NOT PRODUCTION DATA.**
 > Every rupee figure is produced by a seeded synthetic laboratory.
 > No Razorpay production data is used. No real payment is attempted.
+> This is not an official Razorpay product.
 > Claude is optional and off the measured economic path.
 
-**What problem?** After `ACTIVE → PENDING → HALTED`, billing cycles keep
-issuing invoices. When the subscriber later returns to `ACTIVE`, that
-historical backlog is still unpaid.
+**What problem?** After `ACTIVE → PENDING → HALTED`, billing cycles can
+keep issuing invoices. Razorpay does not automatically charge those unpaid
+cycles when the subscriber later returns to `ACTIVE`. The merchant must
+collect leftover revenue — but only if it is collectible.
 
-**Why unusual?** Most “recovery” scores who will pay. RECLAIM scores what
-**changes because we intervene**, under a shared intervention budget, then
-re-checks policy immediately before acting.
+**Why unusual?** Most “recovery” products live in the retry window. AfterDue
+starts **after halt**: leftover invoices → collectibility → policy → model
+→ economics → pre-execution validation → simulated execution → audit.
 
-**What was built?** Ledger → backlog → uplift model → policy → bounded
-agent → simulated executor → audit. A judge-facing console on top.
+**What was built?** Ledger → backlog → collectibility gate → uplift model →
+policy → bounded agent → simulated executor → audit. A judge-facing console
+on top, with a first-visit product tour.
 
 **What proof exists?** 100-subscriber seed-42 worlds, three strategies on
 the same `run_id`, TOCTOU / idempotency / atomic-budget tests, and a
@@ -36,7 +44,7 @@ to `ACTIVE`, those invoices are still open — but they are not
 automatically collectible. Service may have been suspended for those
 periods.
 
-That `HALTED → ACTIVE` edge is the recovery window. RECLAIM reconstructs
+That `HALTED → ACTIVE` edge is the recovery window. AfterDue reconstructs
 historical unpaid invoices, validates which ones are collectible
 receivables, then asks whether a specific action is worth taking on
 **eligible debt**, given policy, and whether they would have paid anyway.
@@ -54,7 +62,7 @@ even after the customer is back. Recovering them requires:
 We do not invent industry recovery-rate statistics. This repo is a
 laboratory, not a production collection system.
 
-## What RECLAIM does
+## What AfterDue does
 
 ```
 Detect halt → reactivation
@@ -112,7 +120,7 @@ See [`docs/architecture.md`](docs/architecture.md) and
 | **LLM** | Grounded language over supplied facts | Any financial decision |
 | **Agent** | Deterministic orchestration + validator | LLM-chosen actions |
 
-`LLM_ENABLED` defaults to `false`. The Naive / Rule-based / RECLAIM
+`LLM_ENABLED` defaults to `false`. The Naive / Rule-based / AfterDue
 comparison is identical with Claude off.
 
 ## Recovery economics
@@ -151,7 +159,7 @@ Details: [`docs/evaluation.md`](docs/evaluation.md).
 |---|---|
 | **Naive** | Encounter order. First allowed automated action until the budget is gone. |
 | **Rule-based** | Heuristic score (backlog + recency + historical success). Same actions and budget. |
-| **RECLAIM** | Model incremental EV, then the same policy and budget. |
+| **AfterDue** (`reclaim`) | Model incremental EV, then the same policy and budget. |
 
 Canonical comparison **after the collectibility gate** (`subscriber_count=100`,
 `seed=42`, `intervention_budget=25`):
@@ -164,7 +172,7 @@ cases are outside the strategy universe).
 |---|---:|---:|---:|---:|
 | Naive | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
 | Rule-based | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
-| RECLAIM | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+| AfterDue | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
 
 Yield denominator is collectible eligible receivable, not raw historical
 invoices. All three strategies saw the same 23 cases and the same

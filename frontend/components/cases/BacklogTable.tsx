@@ -1,3 +1,4 @@
+import { collectibilityTone, StatusBadge } from "@/components/ui/Badge";
 import { formatMonth } from "@/lib/format/date";
 import { formatPaiseINR } from "@/lib/format/money";
 import type { Invoice } from "@/types/api";
@@ -50,8 +51,10 @@ export function BacklogTable({
               <td className="px-3 py-2.5 capitalize">
                 {statusLabel(invoice.service_delivery_status)}
               </td>
-              <td className="px-3 py-2.5 uppercase">
-                {statusLabel(invoice.collectibility_status)}
+              <td className="px-3 py-2.5">
+                <StatusBadge tone={collectibilityTone(invoice.collectibility_status)}>
+                  {statusLabel(invoice.collectibility_status)}
+                </StatusBadge>
               </td>
               <td className="px-4 py-2.5 text-xs text-ink-soft">
                 {statusLabel(invoice.collectibility_reason_codes?.[0])}

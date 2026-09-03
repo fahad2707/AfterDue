@@ -9,7 +9,7 @@ import type { StrategyMetrics } from "@/types/api";
 describe("SyntheticBadge", () => {
   it("renders a visible synthetic label", () => {
     const html = renderToStaticMarkup(<SyntheticBadge />);
-    expect(html).toContain("Synthetic simulation");
+    expect(html).toContain("Synthetic prototype");
     expect(html).toContain("synthetic-badge");
   });
 });
@@ -67,7 +67,7 @@ describe("strategy comparison", () => {
     expect(html).toContain("₹59,993");
     expect(html).toContain("Naive");
     expect(html).toContain("Rule-based");
-    expect(html).toContain("RECLAIM");
+    expect(html).toContain("AfterDue");
     expect(html).not.toContain("AI confidence");
   });
 });

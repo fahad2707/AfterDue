@@ -75,11 +75,11 @@ const detail: RecoveryCaseDetail = {
 describe("AgentWorkbench", () => {
   it("labels simulated execution and does not auto-call Claude", () => {
     const html = renderToStaticMarkup(<AgentWorkbench detail={detail} />);
-    expect(html).toContain("SIMULATED — NO REAL PAYMENT WILL BE ATTEMPTED");
+    expect(html).toContain("SIMULATED EXECUTION — NO REAL PAYMENT WILL BE ATTEMPTED");
     expect(html).toContain("Run simulated recovery");
     expect(html).toContain("Generate AI explanation");
     expect(html).toContain("Claude is not");
-    expect(html).toContain("Ask RECLAIM about this decision");
+    expect(html).toContain("Ask AfterDue about this decision");
     expect(html).not.toContain("AI confidence");
   });
 });

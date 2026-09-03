@@ -3,28 +3,12 @@ import Link from "next/link";
 import { RevenueFunnel } from "@/components/dashboard/RevenueFunnel";
 import { StrategyComparison } from "@/components/dashboard/StrategyComparison";
 import { EmptyState } from "@/components/ui/StateBlock";
+import { MetricCard, PageHeader } from "@/components/ui/MetricCard";
+import { SyntheticBadge } from "@/components/console/SyntheticBadge";
 import { formatCount, formatPaiseINR, formatRatio } from "@/lib/format/money";
 import { strategyLabel } from "@/lib/format/policy";
 import { withRun } from "@/lib/run";
 import type { DashboardSummary } from "@/types/api";
-
-function Card({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-md border border-line bg-paper-raised px-4 py-4">
-      <p className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">{label}</p>
-      <p className="mt-2 font-mono text-2xl tabular tracking-tight text-ink">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-ink-soft">{hint}</p> : null}
-    </div>
-  );
-}
 
 export function Overview({ data }: { data: DashboardSummary }) {
   const strategies = Object.values(data.strategy_results ?? {});
@@ -43,64 +27,80 @@ export function Overview({ data }: { data: DashboardSummary }) {
     yieldDenom > 0 && data.best_baseline_recovery_paise != null
       ? data.best_baseline_recovery_paise / yieldDenom
       : data.best_baseline_yield;
+  const afterDue = data.strategy_results?.reclaim;
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft">
-          Revenue Recovery OS
-        </p>
-        <h2 className="mt-2 text-3xl font-medium tracking-tight">RECLAIM</h2>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-ink-soft">
-          Reconstruct historical unpaid invoices after post-halt reactivation,
-          validate collectible receivables, then optimize bounded recovery only
-          over eligible debt.
-        </p>
-      </header>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageHeader
+          eyebrow="Overview"
+          title="AfterDue"
+          body="When a halted subscription returns to active, leftover unpaid invoices are not charged automatically. AfterDue reconstructs that history, validates collectible receivables, then ranks bounded interventions."
+        />
+        <SyntheticBadge />
+      </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Card
-          label="Historical unpaid invoices"
-          value={formatPaiseINR(historical)}
-        />
-        <Card
-          label="Collectible receivables"
+      <section data-guide="overview-metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard label="Historical unpaid" value={formatPaiseINR(historical)} />
+        <MetricCard
+          label="Collectible"
           value={formatPaiseINR(collectible)}
+          hint="Only this amount is eligible for recovery optimization"
+          emphasize
         />
-        <Card label="Review required" value={formatPaiseINR(review)} />
-        <Card
+        <MetricCard label="Review required" value={formatPaiseINR(review)} />
+        <MetricCard
           label="Excluded / not collectible"
           value={formatPaiseINR(excluded)}
           hint="Not lost revenue — service was not a valid receivable"
         />
-        <Card
+        <MetricCard
           label="Recovery cases"
           value={formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
         />
-        <Card label="Intervention budget" value={formatCount(data.intervention_budget)} />
-        <Card
+        <MetricCard
           label="Recovered revenue"
           value={recovered ? formatPaiseINR(recovered) : "—"}
           hint={
-            data.best_baseline_name
-              ? strategyLabel(data.best_baseline_name)
-              : "Run strategies on Simulation"
+            afterDue
+              ? "AfterDue on this run"
+              : data.best_baseline_name
+                ? strategyLabel(data.best_baseline_name)
+                : "Run strategies on Simulation"
           }
+          emphasize={Boolean(recovered)}
         />
-        <Card
-          label="RECLAIM vs best baseline"
-          value={
-            data.reclaim_vs_best_baseline_paise == null
-              ? "—"
-              : formatPaiseINR(data.reclaim_vs_best_baseline_paise)
-          }
-          hint="Incremental recovered revenue vs Naive/Rule-based"
-        />
-        <Card
-          label="Recovery yield"
-          value={formatRatio(yieldValue)}
-          hint="Recovered / collectible recovery-eligible revenue"
-        />
+      </section>
+
+      <section className="rounded-lg border border-line bg-paper-raised px-4 py-4">
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-soft">
+          What AfterDue is doing right now
+        </h3>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <dt className="text-xs text-ink-soft">Collectible cases in queue</dt>
+            <dd className="mt-1 font-medium tabular">
+              {formatCount(data.collectible_recovery_case_count ?? data.recovery_case_count)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-ink-soft">Review-required cases</dt>
+            <dd className="mt-1 font-medium tabular">
+              {formatCount(data.review_required_case_count ?? 0)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-ink-soft">Interventions used</dt>
+            <dd className="mt-1 font-medium tabular">
+              {formatCount(used)} / {formatCount(data.intervention_budget)}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-sm text-ink-soft">
+          {afterDue
+            ? "AfterDue has already been run on this synthetic world. Inspect cases for collectibility, policy, and simulated execution."
+            : "Strategies have not been run yet. Generate or select a world, then compare Naive, Rule-based, and AfterDue on Simulation."}
+        </p>
       </section>
 
       <RevenueFunnel
@@ -113,10 +113,31 @@ export function Overview({ data }: { data: DashboardSummary }) {
         recovered={recovered}
       />
 
+      <section className="grid gap-3 sm:grid-cols-3">
+        <MetricCard
+          label="Intervention budget"
+          value={formatCount(data.intervention_budget)}
+        />
+        <MetricCard
+          label="AfterDue vs best baseline"
+          value={
+            data.reclaim_vs_best_baseline_paise == null
+              ? "—"
+              : formatPaiseINR(data.reclaim_vs_best_baseline_paise)
+          }
+          hint="Incremental recovered revenue vs Naive/Rule-based"
+        />
+        <MetricCard
+          label="Recovery yield"
+          value={formatRatio(yieldValue)}
+          hint="Recovered / collectible eligible revenue"
+        />
+      </section>
+
       {strategies.length === 0 ? (
         <EmptyState
           title="Baselines have not been run"
-          body="Generate a world, then run Naive, Rule-based, and RECLAIM on the same seed to compare recovery economics."
+          body="Generate a world, then run Naive, Rule-based, and AfterDue on the same seed to compare recovery economics."
           href={withRun("/simulate", data.run_id)}
           action="Open simulation"
         />

@@ -24,7 +24,7 @@ export function explainCase(input: {
   reasonCodes: string[];
   allowedActions: string[];
 }): string[] {
-  const opening = `RECLAIM opened this recovery case because the subscription returned to ACTIVE after a halted period, and collectibility validation found ${input.invoiceCount} eligible invoice${input.invoiceCount === 1 ? "" : "s"} totaling ${formatPaiseINR(input.backlogPaise)}.`;
+  const opening = `AfterDue opened this recovery case because the subscription returned to ACTIVE after a halted period, and collectibility validation found ${input.invoiceCount} eligible invoice${input.invoiceCount === 1 ? "" : "s"} totaling ${formatPaiseINR(input.backlogPaise)}.`;
   const reasons = input.reasonCodes
     .map((code) => REASON_SENTENCES[code])
     .filter((line): line is string => Boolean(line));

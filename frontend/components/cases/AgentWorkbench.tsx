@@ -161,7 +161,7 @@ export function AgentWorkbench({
     <div className="space-y-6">
       <section className="rounded-md border border-line bg-paper-raised p-5">
         <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          RECLAIM recommendation
+          What AfterDue recommends
         </h3>
         <p className="mt-3 text-lg font-medium capitalize">
           {recommended ? actionLabel(recommended) : "Plan to see the recommended action"}
@@ -230,10 +230,10 @@ export function AgentWorkbench({
 
       <section className="rounded-md border border-line bg-paper-raised p-5">
         <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Simulated recovery
+          What the agent did · simulated execution
         </h3>
         <p className="mt-2 text-sm font-medium text-forest">
-          SIMULATED — NO REAL PAYMENT WILL BE ATTEMPTED
+          SIMULATED EXECUTION — NO REAL PAYMENT WILL BE ATTEMPTED
         </p>
         <button
           type="button"
@@ -247,7 +247,10 @@ export function AgentWorkbench({
           <div className="mt-5 space-y-3">
             <p className="text-sm">
               Status {execution.status}
-              {execution.stop_reason ? ` · ${execution.stop_reason}` : ""}
+              {execution.validated_action
+                ? ` · validated ${actionLabel(execution.validated_action)}`
+                : ""}
+              {execution.stop_reason ? ` · stop ${execution.stop_reason}` : ""}
             </p>
             {execution.action?.outcome ? (
               <p className="font-mono text-sm">
@@ -277,7 +280,7 @@ export function AgentWorkbench({
 
       <section className="rounded-md border border-line p-5">
         <h3 className="text-[11px] uppercase tracking-[0.14em] text-ink-soft">
-          Ask RECLAIM about this decision
+          Ask AfterDue about this decision
         </h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {CHIPS.map((chip) => (
