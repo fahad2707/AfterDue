@@ -20,6 +20,8 @@ Post-halt revenue intelligence for subscriptions.
 
 Everyone is optimizing the failed payment. **AfterDue is built for what gets left behind.**
 
+Razorpay itself leaves that post-halt window. When a halted subscription becomes active again, [Razorpay documents](https://razorpay.com/docs/payments/subscriptions/states/) that previous charges are not re-attempted — only future billing cycles are charged automatically. Those older invoices require merchant-side action. That is the window AfterDue is built for.
+
 Synthetic prototype for Razorpay AI Buildathon Track 03 — not an official Razorpay product. Figures below are from a seeded laboratory. Execution is simulated. Internal strategy id: `reclaim`.
 
 ---
@@ -101,7 +103,6 @@ Historical unpaid ledger
            ▼
      Bounded action → Audit trail
 ```
-
 What exists in this repo: event ledger and halt episodes, lineage-based unpaid reconstruction, collectibility gate, deterministic policy, uplift model, bounded agent, simulated executor, append-only audit, and a judge-facing console. Trigger is `HALTED → ACTIVE`. Full design: [`docs/architecture.md`](docs/architecture.md).
 
 `UNKNOWN` service delivery fails closed to review and never enters ranking or the agent. AfterDue cannot infer live merchant entitlement from payment events; production evidence would come from the merchant or manual confirmation.
