@@ -52,8 +52,8 @@ export function TourChrome({
       aria-modal="true"
       aria-labelledby="tour-title"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--glow),_transparent_50%)]" />
-      <div className="relative px-5 pb-2 pt-6 sm:px-10 sm:pt-8">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--glow),_transparent_55%)]" />
+      <header className="relative shrink-0 border-b border-white/5 px-5 py-5 sm:px-10 sm:py-6">
         {scene === 0 ? (
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/40">
             Product tour
@@ -61,32 +61,34 @@ export function TourChrome({
         ) : (
           <BrandMark size="tour" />
         )}
+      </header>
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center px-5 py-8 sm:px-10 sm:py-10">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={scene}
+              initial={reduce ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? { opacity: 1 } : { opacity: 0, y: -8 }}
+              transition={{ duration: reduce ? 0 : 0.28 }}
+              className="tour-motion w-full max-w-3xl"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
-      <div className="relative flex min-h-0 flex-1 items-start justify-center px-5 pb-6 pt-8 sm:px-10 sm:pt-10">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={scene}
-            initial={reduce ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 1 } : { opacity: 0, y: -8 }}
-            transition={{ duration: reduce ? 0 : 0.28 }}
-            className="tour-motion w-full max-w-3xl"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-      <div className="relative px-5 pb-16 pt-6 sm:px-10">
-        <div className="flex items-center justify-between gap-3">
+      <footer className="relative shrink-0 border-t border-white/5 bg-forest-deep/95 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 sm:px-10">
+        <div className="flex items-end justify-between gap-4">
           <button
             type="button"
             onClick={onPrev}
             disabled={scene === 0}
-            className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 disabled:opacity-30"
+            className="pb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 disabled:opacity-30"
           >
             Previous
           </button>
-          <ol className="flex gap-1.5" aria-label="Tour progress">
+          <ol className="mb-2.5 flex gap-1.5" aria-label="Tour progress">
             {Array.from({ length: TOUR_SCENE_COUNT }).map((_, index) => (
               <li
                 key={index}
@@ -96,22 +98,28 @@ export function TourChrome({
               />
             ))}
           </ol>
-          <button
-            type="button"
-            onClick={last ? onFinish : onNext}
-            className="rounded-sm bg-forest px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-white"
-          >
-            {last ? "Enter AfterDue" : scene === 0 ? "Follow the leftover revenue" : "Next"}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={last ? onFinish : onNext}
+              className="rounded-sm bg-forest px-3 py-2 text-[11px] font-medium uppercase tracking-[0.12em] text-white"
+            >
+              {last
+                ? "Enter AfterDue"
+                : scene === 0
+                  ? "Follow the leftover revenue"
+                  : "Next"}
+            </button>
+            <button
+              type="button"
+              onClick={onSkip}
+              className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/55 hover:text-white"
+            >
+              Skip intro
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="absolute bottom-5 right-5 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 hover:text-white sm:right-10"
-        >
-          Skip intro
-        </button>
-      </div>
+      </footer>
     </div>
   );
 }
@@ -143,7 +151,7 @@ function FadeLines({
 
 export function SceneIntro() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div id="tour-title">
         <BrandMark size="hero" tagline />
       </div>
@@ -177,63 +185,81 @@ const STATES = ["Active", "Payment failed", "Pending", "Retries", "Halted"] as c
 export function SceneLifecycle() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-10">
-      <p id="tour-title" className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">
-        Subscription lifecycle
-      </p>
-      <ol className="space-y-3">
-        {STATES.map((label, index) => (
-          <motion.li
-            key={label}
-            initial={reduce ? false : { opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: reduce ? 0 : index * 0.08 }}
-            className={`flex items-center gap-3 text-lg ${
-              label === "Halted"
-                ? "font-medium text-white"
-                : "text-white/45"
-            }`}
-          >
-            <span className="font-mono text-[11px] text-white/40">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            {label}
-          </motion.li>
-        ))}
-      </ol>
-      <div className="space-y-3 border-t border-white/10 pt-8">
-        <p className="text-sm uppercase tracking-[0.16em] text-white/45">Months later</p>
-        <p className="text-2xl font-medium tracking-tight">Halted → Active</p>
-        <p className="text-[11px] uppercase tracking-[0.16em] text-forest">AfterDue</p>
+    <div className="space-y-7">
+      <div className="space-y-4">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          Subscription lifecycle
+        </p>
+        <ol className="space-y-2.5">
+          {STATES.map((label, index) => (
+            <motion.li
+              key={label}
+              initial={reduce ? false : { opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: reduce ? 0 : index * 0.08 }}
+              className={`flex items-center gap-3 text-lg ${
+                label === "Halted" ? "font-medium text-white" : "text-white/45"
+              }`}
+            >
+              <span className="font-mono text-[11px] text-white/40">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              {label}
+            </motion.li>
+          ))}
+        </ol>
       </div>
-      <p className="max-w-xl text-base leading-7 text-white/75">
-        The customer returned. The historical unpaid invoices did not disappear.
-        AfterDue begins on that HALTED → ACTIVE edge.
-      </p>
+      <div className="space-y-3 border-t border-white/10 pt-6">
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/45">
+          Months later
+        </p>
+        <p className="text-2xl font-medium tracking-tight">Halted → Active</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-forest">
+          AfterDue wakes up
+        </p>
+        <p className="max-w-xl text-base leading-7 text-white/75">
+          The customer returned. The historical unpaid invoices did not disappear.
+          AfterDue begins on that HALTED → ACTIVE edge.
+        </p>
+      </div>
     </div>
   );
 }
 
 export function SceneAssumption() {
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
-        The dangerous assumption
-      </p>
-      <p className="text-sm text-white/60">Illustrative seeded example · not a live case</p>
-      <p className="figure text-5xl font-medium tracking-tight">₹31,996</p>
-      <p className="text-[11px] uppercase tracking-[0.14em] text-white/50">
-        Historical unpaid
-      </p>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          The dangerous assumption
+        </p>
+        <p className="text-sm text-white/60">
+          Illustrative seeded example · not a live case
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <p className="figure text-5xl font-medium tracking-tight">₹31,996</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/50">
+          Historical unpaid
+        </p>
+      </div>
       <p className="text-lg text-white/55 line-through decoration-white/30">
         “₹31,996 available to recover.”
       </p>
-      <p className="text-2xl font-medium">Not necessarily.</p>
-      <p className="max-w-xl text-base leading-7 text-white/75">
-        An unpaid invoice proves that an invoice exists. It does not prove the
-        merchant delivered the service. Before asking how to recover it,
-        AfterDue asks whether the money is collectible.
-      </p>
+      <div className="space-y-3">
+        <p className="text-2xl font-medium">Not necessarily.</p>
+        <p className="max-w-xl text-base leading-7 text-white/75">
+          An unpaid invoice proves that an invoice exists. It does not prove the
+          merchant delivered the service. Before asking how to recover it,
+          AfterDue asks whether the money is collectible.
+        </p>
+      </div>
     </div>
   );
 }
@@ -248,11 +274,18 @@ const INVOICES = [
 export function SceneCollectibility() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
-        Collectibility
-      </p>
-      <p className="text-sm text-white/60">Illustrative seeded example · not a live case</p>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          Collectibility
+        </p>
+        <p className="text-sm text-white/60">
+          Illustrative seeded example · not a live case
+        </p>
+      </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {INVOICES.map((row, index) => (
           <motion.li
@@ -308,15 +341,20 @@ const PIPE = [
 export function ScenePipeline() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
-        Decision engine
-      </p>
-      <p className="text-2xl font-medium">Only now does optimization begin.</p>
-      <p className="max-w-xl text-base leading-7 text-white/75">
-        AfterDue separates whether money is owed from how it should be recovered.
-      </p>
-      <ol className="space-y-2">
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          Decision engine
+        </p>
+        <p className="text-2xl font-medium">Only now does optimization begin.</p>
+        <p className="max-w-xl text-base leading-7 text-white/75">
+          AfterDue separates whether money is owed from how it should be recovered.
+        </p>
+      </div>
+      <ol className="space-y-2.5">
         {PIPE.map(([title, body], index) => (
           <motion.li
             key={title}
@@ -336,13 +374,18 @@ export function ScenePipeline() {
 
 export function SceneDecision() {
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
-        The decision
-      </p>
-      <p className="text-sm text-white/60">
-        Illustrative seeded example on ₹15,998 collectible · not live model output
-      </p>
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          The decision
+        </p>
+        <p className="text-sm text-white/60">
+          Illustrative seeded example on ₹15,998 collectible · not live model output
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
           <p className="figure text-3xl font-medium">17.5%</p>
@@ -388,13 +431,18 @@ const GUARDS = [
 export function SceneBounds() {
   const reduce = useReducedMotion();
   return (
-    <div className="space-y-8">
-      <p id="tour-title" className="text-[11px] uppercase tracking-[0.18em] text-white/55">
-        Bounded automation
-      </p>
-      <p className="text-2xl font-medium">
-        Automation that touches money needs boundaries.
-      </p>
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <p
+          id="tour-title"
+          className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55"
+        >
+          Bounded automation
+        </p>
+        <p className="text-2xl font-medium">
+          Automation that touches money needs boundaries.
+        </p>
+      </div>
       <ul className="space-y-2">
         {GUARDS.map(([rule, effect], index) => (
           <motion.li
@@ -421,7 +469,7 @@ export function SceneBounds() {
 
 export function SceneHandoff() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <p id="tour-title" className="sr-only">
         AfterDue
       </p>
