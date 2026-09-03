@@ -1,268 +1,170 @@
+<div align="center">
+
 # AfterDue
 
-**Post-halt revenue intelligence for subscriptions.**
+**The subscription came back. The old revenue didn't.**
 
-AfterDue reconstructs leftover unpaid invoices after a halted subscription
-returns to active, determines which debt is actually collectible, and
-identifies where intervention creates incremental recovery. Execution in
-this repository is **simulated**. Built for Razorpay AI Buildathon Track 03.
+Post-halt revenue intelligence for subscriptions.
 
-AfterDue was previously developed under the internal codename **RECLAIM**.
-APIs, strategy IDs, environment variables, and Mongo collections still use
-`reclaim` where changing them would break evaluation or deployment.
+<br/>
 
-> **SYNTHETIC PROTOTYPE — NOT PRODUCTION DATA.**
-> Every rupee figure is produced by a seeded synthetic laboratory.
-> No Razorpay production data is used. No real payment is attempted.
-> This is not an official Razorpay product.
-> Claude is optional and off the measured economic path.
+> Most recovery systems optimize the failure.
+>
+> **AfterDue starts after the recovery lifecycle is already over.**
 
-**What problem?** After `ACTIVE → PENDING → HALTED`, billing cycles can
-keep issuing invoices. Razorpay does not automatically charge those unpaid
-cycles when the subscriber later returns to `ACTIVE`. The merchant must
-collect leftover revenue — but only if it is collectible.
+<br/>
 
-**Why unusual?** Most “recovery” products live in the retry window. AfterDue
-starts **after halt**: leftover invoices → collectibility → policy → model
-→ economics → pre-execution validation → simulated execution → audit.
+`POST-HALT` · `COLLECTIBILITY-AWARE` · `UPLIFT` · `POLICY-GATED` · `BOUNDED` · `AUDITABLE`
 
-**What was built?** Ledger → backlog → collectibility gate → uplift model →
-policy → bounded agent → simulated executor → audit. A judge-facing console
-on top, with a first-visit product tour.
+</div>
 
-**What proof exists?** 100-subscriber seed-42 worlds, three strategies on
-the same `run_id`, TOCTOU / idempotency / atomic-budget tests, and a
-real incident log — not reconstructed stories.
+Everyone is optimizing the failed payment. **AfterDue is built for what gets left behind.**
+
+Synthetic prototype for Razorpay AI Buildathon Track 03 — not an official Razorpay product. Figures below are from a seeded laboratory. Execution is simulated. Internal strategy id: `reclaim`.
 
 ---
 
-## The problem
+## The ₹31,996 problem
 
-When a subscription goes `ACTIVE → PENDING → HALTED`, the platform can
-keep generating invoices that nobody pays. If the customer later returns
-to `ACTIVE`, those invoices are still open — but they are not
-automatically collectible. Service may have been suspended for those
-periods.
+A customer returns after a halted period. Their ledger still contains:
 
-That `HALTED → ACTIVE` edge is the recovery window. AfterDue reconstructs
-historical unpaid invoices, validates which ones are collectible
-receivables, then asks whether a specific action is worth taking on
-**eligible debt**, given policy, and whether they would have paid anyway.
+### ₹31,996 in historical unpaid invoices
 
-## Why this matters
+The obvious question:
 
-A merchant can lose the historical cycles that accumulated during a halt
-even after the customer is back. Recovering them requires:
+> How do we recover ₹31,996?
 
-- a correct ledger (no double-claim, no overwritten halt)
-- a policy that will not charge a domestic card or a disputed customer
-- an economic ranking that does not treat “would have paid anyway” as a win
-- an executor that re-validates the world immediately before acting
+AfterDue asks first:
 
-We do not invent industry recovery-rate statistics. This repo is a
-laboratory, not a production collection system.
+> **How much of that ₹31,996 should we even attempt to recover?**
 
-## What AfterDue does
+An unpaid invoice proves that an invoice exists. It does not prove the merchant delivered the service.
 
-```
-Detect halt → reactivation
-  → reconstruct unpaid halt invoices (integer paise)
-  → collectibility / service-entitlement gate
-  → estimate P(recovery | action) and P(recovery | no_action)
-      only over collectible eligible receivables
-  → policy filter
-  → rank by incremental expected value under a shared budget
-  → validate again
-  → simulated execution (M3 oracle)
-  → audit + metrics
-```
-
-Claude may explain, answer constrained questions, or propose structured
-extraction. It does not decide money movement.
-
-## Architecture
-
-```
-Razorpay-like events
-        ↓
-Ledger / state machine / halt episodes
-        ↓
-Post-halt unpaid reconstruction (lineage, not date guesses)
-        ↓
-Collectibility gate (UNKNOWN fails closed)
-        ↓
-Feature builder  (no oracle, no latent, no strategy name)
-        ↓
-Recovery model   P(recovery | action)
-        ↓
-Uplift / incremental EV
-        ↓
-Policy filter    (authoritative)
-        ↓
-Bounded agent    observe → analyze → propose → validate → stop
-        ↓
-Simulated execution   (existing M3 oracle only)
-        ↓
-Audit + metrics
-```
-
-Claude is a **side-car**: explanation / Q&A / extraction only.
-
-See [`docs/architecture.md`](docs/architecture.md) and
-[`docs/agent.md`](docs/agent.md).
-
-## Intelligence architecture
-
-| Layer | Owns | Does not own |
+| Historical invoice | Service evidence | AfterDue |
 |---|---|---|
-| **ML** | Per-action probabilities, uplift, incremental EV, ranking | Policy, execution, metrics |
-| **Policy** | What is permitted, escalated, or stopped | Probabilities |
-| **LLM** | Grounded language over supplied facts | Any financial decision |
-| **Agent** | Deterministic orchestration + validator | LLM-chosen actions |
+| ₹7,999 | Unknown | Review required |
+| ₹7,999 | Delivered | Collectible |
+| ₹7,999 | Suspended | Excluded |
+| ₹7,999 | Delivered | Collectible |
 
-`LLM_ENABLED` defaults to `false`. The Naive / Rule-based / AfterDue
-comparison is identical with Claude off.
+### ₹31,996 historical unpaid → ₹15,998 collectible
 
-## Recovery economics
+Review-required money is not collectible. Excluded money is not lost recovery — it was not a valid receivable.
 
-```
-uplift(A) = P(recovery | A) − P(recovery | no_action)
+**Only then does recovery optimization begin.**
 
-incremental_ev(A) = round(backlog_paise × uplift(A) − cost(A))
-```
+This is a real case from the canonical seed-42 world (`Priya 0064`): four ₹7,999 halt invoices, same split as the table.
 
-`NO_ACTION` EV is 0. Negative or zero EV means do nothing. UI copy says
-“estimated intervention lift” and “expected incremental recovery,” never
-“AI confidence.”
+![Collectibility decision: ₹31,996 historical unpaid gated to ₹15,998 collectible](docs/assets/afterdue-collectibility.png)
 
-## Safety
+---
 
-- **Idempotency** — unique `event_id` and `recovery_actions.idempotency_key`
-- **Policy revalidation** — planning decision and execution decision are both audited
-- **TOCTOU** — plan payment link, customer opts out, execute is blocked
-- **Budget atomicity** — Mongo `find_one_and_update` on remaining slots
-- **Stopping rules** — success, dispute, opt-out, max attempts (3), cooldown, budget, EV ≤ 0
-- **Audit** — append-only per-subscription sequence
+## Typical recovery vs AfterDue
 
-## Synthetic evaluation
+Conceptual comparison. Not a benchmark of other Buildathon projects.
 
-One seeded world, one policy, one oracle, one intervention budget. Only
-the decision rule changes. Hidden `latent_payment_intent` is never a
-strategy input. Persistence IDs (`run_id`, `case_id`) isolate Mongo;
-oracle seeds use `synthetic_case_key`.
-
-Details: [`docs/evaluation.md`](docs/evaluation.md).
-
-## Baselines
-
-| Strategy | Rule |
+| Typical recovery agent | AfterDue |
 |---|---|
-| **Naive** | Encounter order. First allowed automated action until the budget is gone. |
-| **Rule-based** | Heuristic score (backlog + recency + historical success). Same actions and budget. |
-| **AfterDue** (`reclaim`) | Model incremental EV, then the same policy and budget. |
+| Starts when payment fails | Starts when the customer returns |
+| Sees an unpaid invoice | Asks whether it is collectible |
+| Predicts likelihood to pay | Estimates the incremental effect of acting |
+| Optimizes attempted recovery | Optimizes collectible incremental ₹ |
+| Chooses an action | Revalidates immediately before execution |
+| Stops after the retry lifecycle | Operates on the revenue left behind |
 
-Canonical comparison **after the collectibility gate** (`subscriber_count=100`,
-`seed=42`, `intervention_budget=25`):
+---
 
-Funnel: historical unpaid ₹16,71,822 → collectible ₹8,42,415 · review
-₹5,67,448 · excluded ₹2,61,959. 23 collectible recovery cases (3 review-only
-cases are outside the strategy universe).
+## How AfterDue works
 
-| Strategy | Recovered | Incremental | Yield | Used |
-|---|---:|---:|---:|---:|
-| Naive | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
-| Rule-based | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
-| AfterDue | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+```text
+Customer returns
+       │
+       ▼
+Historical unpaid ledger
+       │
+       ▼
+┌─────────────────────┐
+│   COLLECTIBILITY    │  Is this receivable valid?
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│       POLICY        │  What are we allowed to do?
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│  UPLIFT + ECONOMICS │  Does acting create incremental ₹?
+└──────────┬──────────┘
+           ▼
+┌─────────────────────┐
+│     VALIDATION      │  Is it still safe to act?
+└──────────┬──────────┘
+           ▼
+     Bounded action → Audit trail
+```
 
-Yield denominator is collectible eligible receivable, not raw historical
-invoices. All three strategies saw the same 23 cases and the same
-₹8,42,415. On this seed they recovered the same amount. That is reported
-as-is; the simulator was not retuned.
+What exists in this repo: event ledger and halt episodes, lineage-based unpaid reconstruction, collectibility gate, deterministic policy, uplift model, bounded agent, simulated executor, append-only audit, and a judge-facing console. Trigger is `HALTED → ACTIVE`. Full design: [`docs/architecture.md`](docs/architecture.md).
 
-**Not comparable to M5/M6 rupee totals.** Those treated unpaid halt invoices
-as eligible receivables (32 cases, ₹7,41,880 at risk). The eligible universe
-changed.
+`UNKNOWN` service delivery fails closed to review and never enters ranking or the agent. AfterDue cannot infer live merchant entitlement from payment events; production evidence would come from the merchant or manual confirmation.
 
-These are **synthetic** figures, not Razorpay production statistics. If a
-later seed loses, that result is reported.
+It does not rank `P(payment)`. On collectible debt only:
 
-## Running locally
+```text
+uplift(A) = P(recovery | A) − P(recovery | no_action)
+incremental_ev_paise(A) = round(backlog_amount_paise × uplift(A) − cost(A))
+```
+
+After the gate, `backlog_amount_paise` is collectible eligible receivable. `NO_ACTION` EV is `0`. UI says “estimated intervention lift,” never “AI confidence.”
+
+Policy is deterministic and provenanced (documented platform behavior / product design assumption / safety guardrail). Cited Razorpay rule: [manual charging of a domestic card is not supported](https://razorpay.com/docs/payments/subscriptions/payment-retries/). The agent revalidates immediately before **simulated** execution (idempotency, cooldown, max attempts, TOCTOU). Claude may explain; it does not decide money. Details: [`docs/policy.md`](docs/policy.md), [`docs/agent.md`](docs/agent.md).
+
+This laboratory models leftover halt-period invoices that remain after the customer returns. It is not a failed-payment retry classifier, and it is not a Razorpay production feature.
+
+---
+
+## Evaluation
+
+One seeded world, one policy, one oracle, one intervention budget. Only the decision rule changes.
+
+Canonical run after the collectibility gate: `subscriber_count=100`, `seed=42`, `intervention_budget=25`.
+
+Funnel: historical unpaid ₹16,71,822 → collectible ₹8,42,415 · review ₹5,67,448 · excluded ₹2,61,959. 23 collectible cases (3 review-only cases sit outside the strategy universe).
+
+| Strategy | Rule | Recovered | Incremental | Yield | Used |
+|---|---|---:|---:|---:|---:|
+| Naive | First allowed action, encounter order | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+| Rule-based | Heuristic score, same actions and budget | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+| AfterDue (`reclaim`) | Model incremental EV, same policy and budget | ₹5,53,459 | ₹2,95,483 | 65.70% | 16 |
+
+**That tie is the result.** The simulator was not retuned so AfterDue would win. Yield is recovered / collectible eligible, not raw historical unpaid. Synthetic, not Razorpay production statistics. Methodology: [`docs/evaluation.md`](docs/evaluation.md). Model/calibration: [`docs/model.md`](docs/model.md).
+
+---
+
+## Run it
 
 ```bash
 git clone https://github.com/fahad2707/reclaim.git && cd reclaim
-make setup
-# put MONGODB_URI in .env
-make backend      # http://127.0.0.1:8000
-make frontend     # http://localhost:3000
+make setup          # then put MONGODB_URI in .env
+make backend        # http://127.0.0.1:8000
+make frontend       # http://localhost:3000
+make demo-reset     # canonical 100 / seed 42 / budget 25 (backend must be up)
 ```
 
-Then `make demo-reset` (backend must already be up) to generate the
-canonical world and print console URLs. Or walk
-[`docs/demo-script.md`](docs/demo-script.md).
+First visit opens the product tour. `/?guide=1` walks the live console.
 
-The Evaluation page (`/evaluation`) runs an in-memory collectibility
-benchmark. It does not write Mongo. CLI: `make benchmark`.
+Judge path: Overview (unpaid vs collectible) → Recovery cases (click any row) → Collectibility panel → Policy provenance → Model estimates → simulated execute. Evaluation at `/evaluation` is an in-memory collectibility benchmark and does not write Mongo.
 
-
-## Tests
+Walkthrough: [`docs/demo-script.md`](docs/demo-script.md). Deploy: [`docs/deployment.md`](docs/deployment.md).
 
 ```bash
-make check              # ruff + tsc + pytest
-make test               # backend unit + integration (one process)
-make test-unit
-make test-integration   # throwaway reclaim_test_* database
-cd frontend && npm run lint && npm run typecheck && npm test && npm run build
+make check && make test
 ```
 
-## Deployment
+---
 
-| Piece | Host | Notes |
-|---|---|---|
-| Frontend | Vercel | Project root `frontend/`. Server-only `RECLAIM_API_URL`, `INTERNAL_API_KEY`. |
-| Backend | Railway | `Dockerfile`, `/healthz`, `/readyz`. |
-| Database | MongoDB Atlas | Use `reclaim_demo`. Never a test DB. |
+## Limitations
 
-See [`docs/deployment.md`](docs/deployment.md). Deploy with
-`LLM_ENABLED=false` until the deterministic path is green.
+Synthetic data and oracle only. No production Razorpay connection, no real charge or messaging APIs, no partial settlement. AfterDue cannot infer live service delivery from payment events. What broke while building it: [`docs/incidents.md`](docs/incidents.md).
 
-## Environment variables
+**Docs:** [architecture](docs/architecture.md) · [policy](docs/policy.md) · [model](docs/model.md) · [evaluation](docs/evaluation.md) · [agent](docs/agent.md) · [deployment](docs/deployment.md)
 
-Templates: [`.env.example`](.env.example),
-[`frontend/.env.local.example`](frontend/.env.local.example).
-No real secrets are committed.
-
-`RECLAIM_API_URL` and `INTERNAL_API_KEY` must **not** be `NEXT_PUBLIC_`.
-
-## Repository layout
-
-```
-backend/app/          API, ledger, policy, ML, agent, LLM side-car
-backend/tests/        unit + integration + adversarial
-frontend/             Next.js console (proxy at /api/[...proxy])
-docs/                 architecture, policy, evaluation, agent, incidents
-scripts/demo.sh       canonical generate / run / URLs
-```
-
-## Known limitations
-
-- Synthetic data and a synthetic outcome oracle only
-- No production Razorpay connection
-- No real charge, payment-link, WhatsApp, SMS, or voice APIs
-- No partial invoice settlement (full backlog or nothing)
-- LLM optional; explanations fall back to deterministic copy
-- Model trained on the same synthetic family as the demo
-- Policy action space is four actions
-- `POST /api/model/train` writes an ephemeral file on Railway
-
-## What broke during development
-
-Real failures only: [`docs/incidents.md`](docs/incidents.md).
-
-Strongest “what actually broke” candidates: INC-007 (historical events
-rejected as stale), INC-010 (same-seed oracle hashed `case_id`),
-INC-011 (opt-out TOCTOU hid behind a model re-score).
-
-## Disclaimer
-
-This is a synthetic recovery laboratory. It is not a Razorpay production
-system. Simulated payments do not move money.
+**Built with:** Python · FastAPI · MongoDB · Next.js · scikit-learn · optional Claude. The economic comparison is identical with Claude off.
